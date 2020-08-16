@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSBackgroundColorName</key>
+			<string>background</string>
+			<key>NSBackgroundSystemColorName</key>
+			<string>blackColor</string>
+			<key>NSIconName</key>
+			<string>workflowCustomImageTemplate</string>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Remove Metadata</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>runWorkflowAsService</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSApplicationIdentifier</key>
+				<string>com.apple.finder</string>
+			</dict>
+			<key>NSSendFileTypes</key>
+			<array>
+				<string>public.png</string>
+				<string>public.jpeg</string>
+				<string>public.jpeg-2000</string>
+				<string>public.heic</string>
+				<string>public.heif</string>
+				<string>public.tiff</string>
+				<string>com.adobe.illustrator.ai-image</string>
+				<string>com.adobe.pdf</string>
+				<string>com.adobe.photoshop-image</string>
+				<string>com.adobe.postscript</string>
+				<string>com.adobe.raw-image</string>
+				<string>com.canon.cr2-raw-image</string>
+				<string>com.canon.cr3-raw-image</string>
+				<string>com.canon.crw-raw-image</string>
+				<string>com.canon.tif-raw-image</string>
+				<string>com.compuserve.gif</string>
+				<string>com.epson.raw-image</string>
+				<string>com.fuji.raw-image</string>
+				<string>com.konicaminolta.raw-image</string>
+				<string>com.leafamerica.raw-image</string>
+				<string>com.leica.raw-image</string>
+				<string>com.leica.rwl-raw-image</string>
+				<string>com.nikon.nrw-raw-image</string>
+				<string>com.nikon.raw-image</string>
+				<string>com.olympus.or-raw-image</string>
+				<string>com.olympus.raw-image</string>
+				<string>com.panasonic.raw-image</string>
+				<string>com.panasonic.rw2-raw-image</string>
+				<string>com.pentax.raw-image</string>
+				<string>com.phaseone.raw-image</string>
+				<string>com.samsung.raw-image</string>
+				<string>com.sony.arw-raw-image</string>
+				<string>com.sony.raw-image</string>
+				<string>com.sony.sr2-raw-image</string>
+				<string>public.3gpp</string>
+				<string>public.3gpp2</string>
+				<string>public.mpeg-4</string>
+				<string>com.apple.m4a-audio</string>
+				<string>com.apple.m4v-video</string>
+				<string>com.apple.quicktime-movie</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
