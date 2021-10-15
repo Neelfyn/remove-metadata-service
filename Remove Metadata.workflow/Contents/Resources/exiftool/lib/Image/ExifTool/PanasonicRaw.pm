@@ -512,6 +512,7 @@ my %panasonicWhiteBalance = ( #forum9396
         # when format is int32u (S models), these values have been observed (ref IB):
         #  256 - Leica lens
         #  257 - Lumix lens
+        #  258 - ? (seen once)
     },
     0x1202 => { #IB
         Name => 'LensTypeModel',
@@ -887,7 +888,7 @@ write meta information in Panasonic/Leica RAW, RW2 and RWL images.
 
 =head1 AUTHOR
 
-Copyright 2003-2020, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2021, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

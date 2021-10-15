@@ -37,7 +37,7 @@ use vars qw($VERSION %leicaLensTypes);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 
-$VERSION = '2.11';
+$VERSION = '2.15';
 
 sub ProcessLeicaLEIC($$$);
 sub WhiteBalanceConv($;$$);
@@ -259,6 +259,7 @@ my %shootingMode = (
     88 => 'Clear Sports Shot', #18
     89 => 'Monochrome', #18
     90 => 'Creative Control', #18
+    92 => 'Handheld Night Shot', #forum11523
 );
 
 %Image::ExifTool::Panasonic::Main = (
@@ -670,12 +671,13 @@ my %shootingMode = (
         Name => 'SelfTimer',
         Writable => 'int16u',
         PrintConv => {
+            0 => 'Off (0)', #forum11529
             1 => 'Off',
             2 => '10 s',
             3 => '2 s',
             4 => '10 s / 3 pictures', #17
             258 => '2 s after shutter pressed', #forum11194
-            266 => '10 s', #forum11194
+            266 => '10 s after shutter pressed', #forum11194
             778 => '3 photos after 10 s', #forum11194
         },
     },
@@ -1319,7 +1321,7 @@ my %shootingMode = (
     0xb3 => { #forum11194
         Name => 'VideoBurstResolution',
         Writable => 'int16u',
-        PrintConv => { 0 => 'Off or 4K', 4 => '6K' },
+        PrintConv => { 1 => 'Off or 4K', 4 => '6K' },
     },
     0xb4 => { #forum9429
         Name => 'MultiExposure',
@@ -1344,6 +1346,7 @@ my %shootingMode = (
             0x108 => 'Loop Recording',
             0x810 => '6K Burst',
             0x820 => '6K Burst (Start/Stop)',
+            0x408 => 'Focus Stacking', #forum11563
             0x1001 => 'High Resolution Mode',
         },
     },
@@ -1419,6 +1422,18 @@ my %shootingMode = (
     0xd6 => { #PH (DC-S1)
         Name => 'NoiseReductionStrength',
         Writable => 'rational64s',
+    },
+    0xe4 => { #IB
+        Name => 'LensTypeModel',
+        Condition => '$format eq "int16u"',
+        Writable => 'int16u',
+        RawConv => q{
+            return undef unless $val;
+            require Image::ExifTool::Olympus; # (to load Composite LensID)
+            return $val;
+        },
+        ValueConv => '$_=sprintf("%.4x",$val); s/(..)(..)/$2 $1/; $_',
+        ValueConvInv => '$val =~ s/(..) (..)/$2$1/; hex($val)',
     },
     0x0e00 => {
         Name => 'PrintIM',
@@ -2115,6 +2130,7 @@ my %shootingMode = (
         Name => 'UserProfile',
         Writable => 'string',
     },
+    # 0x357 int32u - 0=DNG, 3162=JPG (ref 23)
     0x359 => { #23
         Name => 'ISOSelected',
         Writable => 'int32s',
@@ -2131,7 +2147,19 @@ my %shootingMode = (
         PrintConv => 'sprintf("%.1f", $val)',
         PrintConvInv => '$val',
     },
-    # 0x357 int32u - 0=DNG, 3162=JPG (ref 23)
+    0x035b => { #IB
+        Name => 'CorrelatedColorTemp', # (in Kelvin)
+        Writable => 'int16u',
+    },
+    0x035c => { #IB
+        Name => 'ColorTint', # (same units as Adobe is using)
+        Writable => 'int16s',
+    },
+    0x035d => { #IB
+        Name => 'WhitePoint', # (x/y)
+        Writable => 'rational64u',
+        Count => 2,
+    },
 );
 
 # Type 2 tags (ref PH)
@@ -2468,7 +2496,8 @@ my %shootingMode = (
                 # AdvancedSceneType=5 for automatic mode iA (ref 19)
                 if ($prt) {
                     return $prt if $v[1] == 1;
-                    return "$prt (intelligent auto)" if $v[1] == 5;
+                    return "$prt (intelligent auto)" if $v[1] == 5; #forum11523
+                    return "$prt (intelligent auto plus)" if $v[1] == 7; #forum11523
                     return "$prt ($v[1])";
                 }
                 return "Unknown ($val)";
@@ -2491,10 +2520,19 @@ my %shootingMode = (
             '9 3' => 'Objects', #(FZ28)
             '9 4' => 'Creative Macro', #(FZ28)
             #'9 5' - ? (GF3)
+            '18 1' => 'High Sensitivity', #forum11523 (TZ5)
+            '20 1' => 'Fireworks', #forum11523 (TZ5)
             '21 2' => 'Illuminations', #(FZ28)
             '21 4' => 'Creative Night Scenery', #(FZ28)
             #'21 5' - ? (LX3)
+            '26 1' => 'High-speed Burst (shot 1)', #forum11523 (TZ5)
+            '27 1' => 'High-speed Burst (shot 2)', #forum11523 (TZ5)
+            '29 1' => 'Snow', #forum11523 (TZ5)
+            '30 1' => 'Starry Sky', #forum11523 (TZ5)
+            '31 1' => 'Beach', #forum11523 (TZ5)
+            '36 1' => 'High-speed Burst (shot 3)', #forum11523 (TZ5)
             #'37 5' - ? (various)
+            '39 1' => 'Aerial Photo / Underwater / Multi-aspect', #forum11523 (TZ5)
             '45 2' => 'Cinema', #(GF2)
             '45 7' => 'Expressive', #(GF1,GF2)
             '45 8' => 'Retro', #(GF1,GF2)
@@ -2799,7 +2837,7 @@ Panasonic and Leica maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2020, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2021, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
