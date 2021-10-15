@@ -539,7 +539,8 @@ my %sImageRegion = ( # new in 1.5
     NOTES => q{
         This table contains tags defined by the IPTC Extension schema version 1.5. 
         The actual namespace prefix is "Iptc4xmpExt", but ExifTool shortens this for
-        the family 1 group name. (see L<http://www.iptc.org/IPTC4XMP/>)
+        the family 1 group name. (see
+        L<http://www.iptc.org/standards/photo-metadata/iptc-standard/>)
     },
     AboutCvTerm => {
         Struct => \%sCVTermDetails,
@@ -1697,6 +1698,7 @@ my %sSubVersion = (
     InitialViewPitchDegrees         => { Writable => 'real' },
     InitialViewRollDegrees          => { Writable => 'real' },
     InitialHorizontalFOVDegrees     => { Writable => 'real' },
+    InitialVerticalFOVDegrees       => { Writable => 'real' },
     FirstPhotoDate                  => { %dateTimeInfo, Groups => { 2 => 'Time' } },
     LastPhotoDate                   => { %dateTimeInfo, Groups => { 2 => 'Time' } },
     SourcePhotosCount               => { Writable => 'integer' },
@@ -1838,6 +1840,10 @@ my %sSubVersion = (
         ValueConv => 'Image::ExifTool::XMP::DecodeBase64($val)',
         ValueConvInv => 'Image::ExifTool::XMP::EncodeBase64($val)',
     },
+    MicroVideo          => { Writable => 'integer' },
+    MicroVideoVersion   => { Writable => 'integer' },
+    MicroVideoOffset    => { Writable => 'integer' },
+    MicroVideoPresentationTimestampUs => { Writable => 'integer' },
 );
 
 # Google creations namespace (ref PH)
@@ -2117,7 +2123,7 @@ This file contains definitions for less common XMP namespaces.
 
 =head1 AUTHOR
 
-Copyright 2003-2020, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2021, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
