@@ -9,11 +9,15 @@
 
 In the Finder, right-click a supported file, such as a JPG image, and select "Remove Metadata". Alternatively, if you've enabled *Show Preview* in the Finder's *View* menu, a "Remove Metadata" icon should appear underneath the preview, or in the *More* menu.
 
+A cog icon will briefly appear in your menu bar. When the cog icon has disappeared, your selected file has been cleaned.
+
 Please note that the original file is overwritten. If you require a copy of your file with the metadata, make sure to duplicate it before clicking "Remove Metadata".
 
 ![Remove Metadata in the Finder context menu](/Screenshots/context_menu.png?raw=true)
 
 ![Remove Metadata in the Finder preview pane](/Screenshots/preview_pane.png?raw=true)
+
+It is also possible to select multiple supported files at once.
 
 ## FAQ
 
