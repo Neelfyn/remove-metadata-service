@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>AMApplicationBuild</key>
-	<string>492</string>
+	<string>512</string>
 	<key>AMApplicationVersion</key>
 	<string>2.10</string>
 	<key>AMDocumentVersion</key>
@@ -100,8 +100,6 @@
 						<string>0</string>
 					</dict>
 				</dict>
-				<key>conversionLabel</key>
-				<integer>0</integer>
 				<key>isViewVisible</key>
 				<true/>
 				<key>location</key>
@@ -161,7 +159,7 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>~/Library/Services/Remove\ Metadata.workflow/Contents/Resources/exiftool/exiftool -q -all= -overwrite_original_in_place "$@"</string>
+					<string>~/Library/Services/Remove\ Metadata.workflow/Contents/Resources/exiftool/exiftool -q -all= -TagsFromFile @ -ColorSpaceTags -overwrite_original_in_place "$@"</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>
@@ -273,12 +271,10 @@
 						<string>4</string>
 					</dict>
 				</dict>
-				<key>conversionLabel</key>
-				<integer>0</integer>
 				<key>isViewVisible</key>
 				<true/>
 				<key>location</key>
-				<string>309.000000:722.000000</string>
+				<string>309.000000:542.000000</string>
 				<key>nibPath</key>
 				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
 			</dict>
@@ -288,7 +284,7 @@
 	</array>
 	<key>connectors</key>
 	<dict>
-		<key>5E46988B-DEE7-4045-9A47-086C47BC092F</key>
+		<key>D0312D43-E6A1-4CEC-AA83-54E1D94CE65D</key>
 		<dict>
 			<key>from</key>
 			<string>16A0542E-BB11-4729-829A-2A344E899E02 - 16A0542E-BB11-4729-829A-2A344E899E02</string>
