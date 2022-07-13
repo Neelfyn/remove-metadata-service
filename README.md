@@ -39,7 +39,7 @@ Many other file types (e.g. PDFs, videos, music, some types of documents) also i
 
 ### How does it work?
 
-Remove Metadata is a simple Automator wrapper for the excellent [ExifTool](https://exiftool.org/) by Phil Harvey, which is bundled within the `.workflow` file itself: no need to install any dependencies. All it currently does is run `exiftool -q -all= -overwrite_original_in_place` on items you've selected in the Finder — so that you can skip a step and not have to switch over to a terminal or some other app to anonymize your photos before sharing them.
+Remove Metadata is a simple Automator wrapper for the excellent [ExifTool](https://exiftool.org/) by Phil Harvey, which is bundled within the `.workflow` file itself: no need to install any dependencies. All it currently does is run `exiftool -q -all= -TagsFromFile @ -ColorSpaceTags -overwrite_original_in_place` on items you've selected in the Finder — so that you can skip a step and not have to switch over to a terminal or some other app to anonymize your photos before sharing them.
 
 ### How do I know that it worked?
 
