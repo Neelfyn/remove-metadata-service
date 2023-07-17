@@ -3,6 +3,9 @@ File:         Image/ExifTool/README
 
 Description:  ExifTool support modules documentation
 
+Note:         This documentation is a reference to be used by developers when
+              adding new tags to ExifTool.
+
 The ExifTool support modules are loaded by ExifTool to allow processing of
 various meta information formats.
 
@@ -246,6 +249,13 @@ key:
                   within this atom.  Currently used only for Canon CNTH atom,
                   which contains garbage after the first contained atom.
 
+    NIKON_OFFSETS [Nikon Encrypted tables only] Pointer to int32u NumberOffsets
+                  for offset-type encrypted Nikon directories.  When set,
+                  directory and decryption lengths are calculated automatically.
+
+    ALLOW_REPROCESS Flag to allow reprocessing of another directory at this
+                  same location in the file, bypassing recursion avoidance test.
+
   DATAMEMBER : BinaryData tables only.  A reference to a list of sorted tag ID's
   which must be extracted as data members when writing.  Must also list "var_"
   format tags and tags with Hook so offsets are properly calculated if the table
@@ -395,9 +405,15 @@ numerical, and generated automatically otherwise.
                   be accessible.
 
                   'Hidden' - set to hide tag from the TagName documentation.
-                  Also suppresses verbose output of a BinaryData tag.
+                  Also suppresses verbose output of a BinaryData tag.  The
+                  RawConv of a Hidden tag should return undef so the tag value
+                  is not seen by the user.
 
                   'IsComposite' - flag set for Composite tags
+
+                  'IsImageData' - flag set if this is an image data offset to
+                  be included in ImageDataMD5 calculation.  Must have an
+                  OffsetPair entry which is the ID of the corresponding size.
 
                   'IsOffset' - flag set if the tag represents an offset to some
                   data, and causes value will be adjusted to an absolute file
@@ -459,6 +475,10 @@ numerical, and generated automatically otherwise.
                   numerical tag values to be printed in hex in the HTML tag name
                   documentation, padded to the number of digits given by the
                   PrintHex value.
+
+                  'PrintInt' - remove decimal part of tag ID in HTML tag name
+                  documentation.  (To avoid confusing ExifTool users because
+                  the LensType decimal numbers are for internal use only.)
 
                   'PrintSort' - causes PrintConv values to be sorted by value
                   rather than key in the HTML tag name documentation.
@@ -531,7 +551,8 @@ numerical, and generated automatically otherwise.
                   SubIFD's where the PutFirst flag is valid.
 
                   'Unknown' - this is an unknown tag (only extracted when the
-                  Unknown option is set).
+                  Unknown option is set).  This is set to 2 for Unknown tags in
+                  binary tables (extracted when Unknown is 2).
 
                   'WriteNothing' - flag indicating that nothing is actually
                   written when this tag is set.  It is a fake writable tag that
@@ -638,7 +659,8 @@ numerical, and generated automatically otherwise.
                   expression, a code reference or a list reference.  In this
                   expression, $self, $val and $tag may be used as with
                   ValueConv, but if ValueConv was defined then $val is the
-                  ValueConv value instead of the Raw value.  The returned value
+                  ValueConv value instead of the Raw value.  Composite tags
+                  may also use the @val, @prt and @raw lists. The returned value
                   should always be defined.  Note that the print conversion is
                   only done if the PrintConv option is enabled (which it is by
                   default), and if the result of the ValueConv is not a scalar
@@ -706,7 +728,7 @@ numerical, and generated automatically otherwise.
                   BitShift are applied before evaluating RawConv.
 
   BitShift      : [Mask tags only] Bit shift for Mask-ed values.  If not
-                  specified, set to the number of trailing bits in the Mask.
+                  specified, set to the number of trailing zero bits in Mask.
                   When reading, the value is shifted right by this number of
                   bits after the Mask is applied.
 
@@ -717,7 +739,7 @@ numerical, and generated automatically otherwise.
                   condition exists, then a 'true' condition is assumed.  The
                   expression may use $self to access the ExifTool object.  The
                   first 128 bytes of the raw data value are accessible through
-                  the reference $valPt for EXIF, Jpeg2000, QuickTime and
+                  the reference $valPt for EXIF, Jpeg2000, QuickTime, FLAC and
                   BinaryData tags only (note that for BinaryData tags, the raw
                   data of $$valPt is always 'undef' type, and may not be used
                   when writing except for SubDirectory tags).  EXIF tags (and
@@ -964,6 +986,10 @@ numerical, and generated automatically otherwise.
   OtherLang     : [reserved] Used internally by QuickTime module to store a list
                   of tag ID's for alternate-language tags based on this one.
 
+  ParentTagInfo : [reserved] Used internally to store a reference to the tag
+                  information hash of the parent structure for flattened
+                  structure tags.
+
   RootTagInfo   : [reserved] Used internally to store a reference to the tag
                   information hash of the top-level structure for flattened
                   structure tags.
@@ -974,6 +1000,9 @@ numerical, and generated automatically otherwise.
   LangCode      : [reserved] Used internally to indicate language code for
                   alternate language tags (eg. 'fr').  Only used with formats
                   which support alternate languages (eg. XMP, MIE, etc).
+
+  AddedUnknown  : [reserved] Used internally to mark Unknown tags that were
+                  added to the table at run time.
 
   SubDirectory {  If it exists, this specifies the start of a new subdirectory.
                   It contains a collection of variables which specify the type
@@ -989,7 +1018,9 @@ numerical, and generated automatically otherwise.
                   current Base.  This is a Perl expression which may use
                   $valuePtr to represent the location of the tag value in the
                   file, or $val for the value itself.  If not specified, a Start
-                  of '$valuePtr' is assumed.
+                  of '$valuePtr' is assumed.  Subdirectories in BinaryData may
+                  also use $dirStart to represent the offset of the current
+                  directory start relative to the start of the data block.
 
      OffsetPt   : [EXIF directories only] If specified, this is a Perl
                   expression that gives the position of a 32-bit word in the

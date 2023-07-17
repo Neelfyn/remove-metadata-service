@@ -58,7 +58,7 @@ use Image::ExifTool::Exif;
 use Image::ExifTool::GPS;
 use Image::ExifTool::HP;
 
-$VERSION = '3.40';
+$VERSION = '3.42';
 
 sub CryptShutterCount($$);
 sub PrintFilter($$$);
@@ -72,10 +72,7 @@ sub DecodeAFPoints($$$$;$);
     Notes => q{
         The first number gives the series of the lens, and the second identifies the
         lens model.  Note that newer series numbers may not always be properly
-        identified by cameras running older firmware versions.  Decimal values have
-        been added to differentiate lenses which would otherwise have the same
-        LensType, and are used by the Composite LensID tag when attempting to
-        identify the specific lens model.
+        identified by cameras running older firmware versions.
     },
     OTHER => sub {
         my ($val, $inv, $conv) = @_;
@@ -365,10 +362,15 @@ sub DecodeAFPoints($$$$;$);
     '8 255.4' => 'Sigma 4.5mm F2.8 EX DC HSM Circular Fisheye', #PH
     '8 255.5' => 'Sigma 50-200mm F4-5.6 DC OS', #26
     '8 255.6' => 'Sigma 24-70mm F2.8 EX DG HSM', #29
+
+    '9 0' => '645 Manual Lens', #PH (NC)
+    '9 3' => 'HD PENTAX-FA 43mm F1.9 Limited', #IB
+    '9 24' => 'HD PENTAX-FA 77mm F1.8 Limited', #IB
+    '9 39' => 'HD PENTAX-FA 31mm F1.8 AL Limited', #IB
+    '9 247' => 'HD PENTAX-DA FISH-EYE 10-17mm F3.5-4.5 ED [IF]', #IB
 #
 # 645 lenses
 #
-    '9 0' => '645 Manual Lens', #PH (NC)
     '10 0' => '645 A Series Lens', #PH
     '11 1' => 'smc PENTAX-FA 645 75mm F2.8', #PH
     '11 2' => 'smc PENTAX-FA 645 45mm F2.8', #PH
@@ -4076,6 +4078,7 @@ my %binaryDataAttrs = (
         ValueConvInv => '$val=~s/\.\d+$//; $val',
         PrintConv => \%pentaxLensTypes,
         SeparateTable => 1,
+        PrintInt => 1,
     },
     3 => { #PH
         Name => 'ExtenderStatus',
@@ -4099,6 +4102,7 @@ my %binaryDataAttrs = (
         ValueConvInv => '$val=~s/\.\d+$//; $val',
         PrintConv => \%pentaxLensTypes,
         SeparateTable => 1,
+        PrintInt => 1,
     },
     3 => {
         Name => 'LensData',
@@ -4134,6 +4138,7 @@ my %binaryDataAttrs = (
         },
         PrintConv => \%pentaxLensTypes,
         SeparateTable => 1,
+        PrintInt => 1,
     },
     4 => {
         Name => 'LensData',
@@ -4169,6 +4174,7 @@ my %binaryDataAttrs = (
         },
         PrintConv => \%pentaxLensTypes,
         SeparateTable => 1,
+        PrintInt => 1,
     },
     13 => {
         Name => 'LensData',
@@ -4204,6 +4210,7 @@ my %binaryDataAttrs = (
         },
         PrintConv => \%pentaxLensTypes,
         SeparateTable => 1,
+        PrintInt => 1,
     },
     12 => {
         Name => 'LensData',
@@ -4240,6 +4247,7 @@ my %binaryDataAttrs = (
         },
         PrintConv => \%pentaxLensTypes,
         SeparateTable => 1,
+        PrintInt => 1,
     },
     15 => {
         Name => 'LensData',
@@ -6315,7 +6323,7 @@ tags, and everyone who helped contribute to the LensType values.
 
 =head1 AUTHOR
 
-Copyright 2003-2022, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

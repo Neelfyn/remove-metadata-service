@@ -21,7 +21,7 @@ use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 use Image::ExifTool::ASF;   # for GetGUID()
 
-$VERSION = '1.39';
+$VERSION = '1.44';
 
 sub ProcessFPX($$);
 sub ProcessFPXR($$$);
@@ -298,6 +298,7 @@ my %fpxFileType = (
 %Image::ExifTool::FlashPix::Main = (
     PROCESS_PROC => \&ProcessFPXR,
     GROUPS => { 2 => 'Image' },
+    VARS => { LONG_TAGS => 0 },
     NOTES => q{
         The FlashPix file format, introduced in 1996, was developed by Kodak,
         Hewlett-Packard and Microsoft.  Internally the FPX file structure mimics
@@ -317,6 +318,10 @@ my %fpxFileType = (
         unrecognized Windows Compound Binary file as a FlashPix (FPX) file.  See
         L<http://graphcomp.com/info/specs/livepicture/fpx.pdf> for the FlashPix
         specification.
+
+        Note that Microsoft is not consistent with the time zone used for some
+        date/time tags, and it may be either UTC or local time depending on the
+        software used to create the file.
     },
     "\x05SummaryInformation" => {
         Name => 'SummaryInfo',
@@ -465,6 +470,44 @@ my %fpxFileType = (
         SubDirectory => {
             TagTable => 'Image::ExifTool::FlashPix::PreviewInfo',
             ByteOrder => 'BigEndian',
+        },
+    },
+    # recognize Autodesk Revit files by looking at BasicFileInfo
+    # (but don't yet support reading their metatdata)
+    BasicFileInfo => {
+        Name => 'BasicFileInfo',
+        Binary => 1,
+        RawConv => q{
+            $val =~ tr/\0//d;   # brute force conversion to ASCII
+            if ($val =~ /\.(rfa|rft|rte|rvt)/) {
+                $self->OverrideFileType(uc($1), "application/$1", $1);
+            }
+            return $val;
+        },
+    },
+    IeImg => {
+        Name => 'EmbeddedImage',
+        Notes => q{
+            embedded images in Scene7 vignette VNT files.  The EmbeddedImage Class and
+            Rectangle are also extracted for applicable images, and may be associated
+            with the corresponding EmbeddedImage via the family 3 group name
+        },
+        Groups => { 2 => 'Preview' },
+        Binary => 1,
+    },
+    IeImg_class => {
+        Name => 'EmbeddedImageClass',
+        Notes => q{
+            not a real tag.  This information is extracted if available for the
+            corresponding EmbeddedImage from the Contents of a VNT file
+        },
+        # eg. "Cache", "Mask"
+    },
+    IeImg_rect => { #
+        Name => 'EmbeddedImageRectangle',
+        Notes => q{
+            not a real tag.  This information is extracted if available for the
+            corresponding EmbeddedImage from the Contents of a VNT file
         },
     },
 );
@@ -1039,6 +1082,7 @@ my %fpxFileType = (
 %Image::ExifTool::FlashPix::Contents = (
     PROCESS_PROC => \&ProcessProperties,
     GROUPS => { 2 => 'Image' },
+    OriginalFileName => { Name => 'OriginalFileName', Hidden => 1 }, # (not a real tag -- extracted from Contents of VNT file)
 );
 
 # CompObj tags
@@ -1318,7 +1362,9 @@ sub ConvertDTTM($)
     my $hr  = ($val >> 6)  & 0x1f;
     my $min = ($val & 0x3f);
     $yr += 1900 if $val;
-    return sprintf("%.4d:%.2d:%.2d %.2d:%.2d:00%s",$yr,$mon,$day,$hr,$min,$val ? 'Z' : '');
+    # ExifTool 12.48 dropped the "Z" on the time here because a test .doc
+    # file written by Word 2011 on Mac certainly used local time here
+    return sprintf("%.4d:%.2d:%.2d %.2d:%.2d:00",$yr,$mon,$day,$hr,$min);
 }
 
 #------------------------------------------------------------------------------
@@ -1515,11 +1561,46 @@ sub ProcessContents($$$)
     my $isFLA;
 
     # all of my FLA samples contain "Contents" data, and no other FPX-like samples have
-    # this, but check the data for a familiar pattern to be sure this is FLA: the
-    # Contents of all of my FLA samples start with two bytes (0x29,0x38,0x3f,0x43 or 0x47,
-    # then 0x01) followed by a number of zero bytes (from 0x18 to 0x26 of them, related
-    # somehow to the value of the first byte), followed by the string "DocumentPage"
-    $isFLA = 1 if $$dataPt =~ /^..\0+\xff\xff\x01\0\x0d\0CDocumentPage/s;
+    # this (except Scene7 VNT viles), but check the data for a familiar pattern to be
+    # sure this is FLA: the Contents of all of my FLA samples start with two bytes
+    # (0x29,0x38,0x3f,0x43 or 0x47, then 0x01) followed by a number of zero bytes
+    # (from 0x18 to 0x26 of them, related somehow to the value of the first byte),
+    # followed by the string "DocumentPage"
+    if ($$dataPt =~ /^..\0+\xff\xff\x01\0\x0d\0CDocumentPage/s) {
+        $isFLA = 1;
+    } elsif ($$dataPt =~ /^\0{4}.(.{1,255})\x60\xa1\x3f\x22\0{5}(.{8})/sg) {
+        # this looks like a VNT file
+        $et->OverrideFileType('VNT', 'image/x-vignette');
+        # hack to set proper file description (extension is the same for V-Note files)
+        $Image::ExifTool::static_vars{OverrideFileDescription}{VNT} = 'Scene7 Vignette',
+        my $name = $1;
+        my ($w, $h) = unpack('V2',$2);
+        $et->FoundTag(ImageWidth => $w);
+        $et->FoundTag(ImageHeight => $h);
+        $et->HandleTag($tagTablePtr, OriginalFileName => $name);        
+        if ($$dataPt =~ /\G\x01\0{4}(.{12})/sg) {
+            # (first 4 bytes seem to be number of objects, next 4 bytes are zero, then ICC size)
+            my $size = unpack('x8V', $1);
+            # (not useful?) $et->FoundTag(NumObjects => $num);
+            if ($size and pos($$dataPt) + $size < length($$dataPt)) {
+                my $dat = substr($$dataPt, pos($$dataPt), $size);
+                $et->FoundTag(ICC_Profile => $dat);
+                pos($$dataPt) += $size;
+            }
+            $$et{IeImg_lkup} = { };
+            $$et{IeImg_class} = { };
+            # - the byte before \x80 is 0x0d, 0x11 or 0x1f for separate images in my samples,
+            #   and 0x1c or 0x23 for inline masks
+            # - the byte after \xff\xff is 0x3b in my samples for $1 containing 'VnMask' or 'VnCache'
+            while ($$dataPt =~ /\x0bTargetRole1(?:.\x80|\xff\xff.\0.\0Vn(\w+))\0\0\x01.{4}(.{24})/sg) {
+                my ($index, @coords) = unpack('Vx4V4', $2);
+                next if $index == 0xffffffff;
+                $$et{IeImg_lkup}{$index} and $et->WarnOnce('Duplicate image index');
+                $$et{IeImg_lkup}{$index} = "@coords";
+                $$et{IeImg_class}{$index} = $1 if $1;
+            }
+        }
+    }
 
     # do a brute-force scan of the "Contents" for UTF-16 XMP
     # (this may always be little-endian, but allow for either endianness)
@@ -2242,7 +2323,8 @@ sub ProcessFPX($$)
             # remove instance number or class ID from tag if necessary
             $tagInfo = $et->GetTagInfo($tagTablePtr, $1) if
                 ($tag =~ /(.*) \d{6}$/s and $$tagTablePtr{$1}) or
-                ($tag =~ /(.*)_[0-9a-f]{16}$/s and $$tagTablePtr{$1});
+                ($tag =~ /(.*)_[0-9a-f]{16}$/s and $$tagTablePtr{$1}) or
+                ($tag =~ /(.*)_[0-9]{4}$/s and $$tagTablePtr{$1});  # IeImg instances
         }
 
         my $lSib = Get32u(\$dir, $pos + 0x44);  # left sibling
@@ -2314,8 +2396,28 @@ sub ProcessFPX($$)
                 );
                 my $subTablePtr = GetTagTable($$subdir{TagTable});
                 $et->ProcessDirectory(\%dirInfo, $subTablePtr,  $$subdir{ProcessProc});
+            } elsif (defined $size and $size > length($buff)) {
+                $et->WarnOnce('Truncated object');
             } else {
-                $et->FoundTag($tagInfo, $buff);
+                $buff = substr($buff, 0, $size) if defined $size and $size < length($buff);
+                if ($tag =~ /^IeImg_0*(\d+)$/) {
+                    # set document number for embedded images and their positions (if available, VNT files)
+                    my $num = $1;
+                    $$et{DOC_NUM} = ++$$et{DOC_COUNT};
+                    $et->FoundTag($tagInfo, $buff);
+                    if ($$et{IeImg_lkup} and $$et{IeImg_lkup}{$num}) {
+                        # save position of this image
+                        $et->HandleTag($tagTablePtr, IeImg_rect => $$et{IeImg_lkup}{$num});
+                        delete $$et{IeImg_lkup}{$num};
+                        if ($$et{IeImg_class} and $$et{IeImg_class}{$num}) {
+                            $et->HandleTag($tagTablePtr, IeImg_class => $$et{IeImg_class}{$num});
+                            delete $$et{IeImg_class}{$num};
+                        }
+                    }
+                    delete $$et{DOC_NUM};
+                } else {
+                    $et->FoundTag($tagInfo, $buff);
+                }
             }
             # save object index number for all found tags
             my $num2 = $$et{NUM_FOUND};
@@ -2357,7 +2459,7 @@ sub ProcessFPX($$)
     }
     $$et{INDENT} = $oldIndent if $verbose;
     # try to better identify the file type
-    if ($$et{VALUE}{FileType} eq 'FPX') {
+    if ($$et{FileType} eq 'FPX') {
         my $val = $$et{CompObjUserType} || $$et{Software};
         if ($val) {
             my %type = ( '^3ds Max' => 'MAX', Word => 'DOC', PowerPoint => 'PPT', Excel => 'XLS' );
@@ -2371,6 +2473,10 @@ sub ProcessFPX($$)
     }
     # process Word document table
     ProcessDocumentTable($et);
+
+    if ($$et{IeImg_lkup} and %{$$et{IeImg_lkup}}) {
+        $et->Warn('Image positions exist without corresponding images');
+    }
 
     return 1;
 }
@@ -2395,7 +2501,7 @@ JPEG images.
 
 =head1 AUTHOR
 
-Copyright 2003-2022, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
