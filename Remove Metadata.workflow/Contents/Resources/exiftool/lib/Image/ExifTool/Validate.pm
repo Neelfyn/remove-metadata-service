@@ -17,7 +17,7 @@ package Image::ExifTool::Validate;
 use strict;
 use vars qw($VERSION %exifSpec);
 
-$VERSION = '1.18';
+$VERSION = '1.20';
 
 use Image::ExifTool qw(:Utils);
 use Image::ExifTool::Exif;
@@ -82,8 +82,8 @@ my %otherSpec = (
     CR2 => { 0xc5d8 => 1, 0xc5d9 => 1, 0xc5e0 => 1, 0xc640 => 1, 0xc6dc => 1, 0xc6dd => 1 },
     NEF => { 0x9216 => 1, 0x9217 => 1 },
     DNG => { 0x882a => 1, 0x9211 => 1, 0x9216 => 1 },
-    ARW => { 0x7000 => 1, 0x7001 => 1, 0x7010 => 1, 0x7011 => 1, 0x7020 => 1,
-             0x7031 => 1, 0x7032 => 1, 0x7034 => 1, 0x7035 => 1, 0x7036 => 1, 0x7037 => 1,
+    ARW => { 0x7000 => 1, 0x7001 => 1, 0x7010 => 1, 0x7011 => 1, 0x7020 => 1, 0x7031 => 1,
+             0x7032 => 1, 0x7034 => 1, 0x7035 => 1, 0x7036 => 1, 0x7037 => 1, 0x7038 => 1,
              0x7310 => 1, 0x7313 => 1, 0x7316 => 1, 0x74c7 => 1, 0x74c8 => 1, 0xa500 => 1 },
     RW2 => { All => 1 },    # ignore all unknown tags in RW2
     RWL => { All => 1 },
@@ -437,8 +437,8 @@ sub ValidateExif($$$$$$$$)
                     $et->Warn(sprintf('Wrong IFD for 0x%.4x %s (should be %s not %s)', $tag, $$ti{Name}, $wgp, $ifd));
                 }
             }
-        } elsif (not $otherSpec{$$et{VALUE}{FileType}} or
-            (not $otherSpec{$$et{VALUE}{FileType}}{$tag} and not $otherSpec{$$et{VALUE}{FileType}}{All}))
+        } elsif (not $otherSpec{$$et{FileType}} or
+            (not $otherSpec{$$et{FileType}}{$tag} and not $otherSpec{$$et{FileType}}{All}))
         {
             if ($tagTablePtr eq \%Image::ExifTool::Exif::Main or $$tagInfo{Unknown}) {
                 $et->Warn(sprintf('Non-standard %s tag 0x%.4x %s', $ifd, $tag, $$ti{Name}), 1);
@@ -459,8 +459,8 @@ sub ValidateExif($$$$$$$$)
                 $et->Warn(sprintf('Non-standard count (%d) for %s 0x%.4x %s', $count, $ifd, $tag, $$ti{Name}));
             }
         }
-    } elsif (not $otherSpec{$$et{VALUE}{FileType}} or
-        (not $otherSpec{$$et{VALUE}{FileType}}{$tag} and not $otherSpec{$$et{VALUE}{FileType}}{All}))
+    } elsif (not $otherSpec{$$et{FileType}} or
+        (not $otherSpec{$$et{FileType}}{$tag} and not $otherSpec{$$et{FileType}}{All}))
     {
         $et->Warn(sprintf('Unknown %s tag 0x%.4x', $ifd, $tag), 1);
     }
@@ -659,7 +659,7 @@ ExifTool Validate option is enabled.
 
 =head1 AUTHOR
 
-Copyright 2003-2022, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

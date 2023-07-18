@@ -18,7 +18,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.57';
+$VERSION = '1.58';
 
 sub ProcessID3v2($$$);
 sub ProcessPrivate($$$);
@@ -1414,13 +1414,13 @@ sub ProcessID3($$)
         if ($flags & 0x40) {
             # skip the extended header
             $size >= 4 or $et->Warn('Bad ID3 extended header'), last;
-            my $len = unpack('N', $hBuff);
-            if ($len > length($hBuff) - 4) {
+            my $len = UnSyncSafe(unpack('N', $hBuff));
+            if ($len > length($hBuff)) {
                 $et->Warn('Truncated ID3 extended header');
                 last;
             }
-            $hBuff = substr($hBuff, $len + 4);
-            $pos += $len + 4;
+            $hBuff = substr($hBuff, $len);
+            $pos += $len;
         }
         if ($flags & 0x10) {
             # ignore v2.4 footer (10 bytes long)
@@ -1516,7 +1516,7 @@ sub ProcessID3($$)
         }
     }
 #
-# process the the information
+# process the information
 #
     if ($rtnVal) {
         # first process audio data if it exists
@@ -1652,7 +1652,7 @@ other types of audio files.
 
 =head1 AUTHOR
 
-Copyright 2003-2022, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

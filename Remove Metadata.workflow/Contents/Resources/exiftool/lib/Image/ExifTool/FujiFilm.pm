@@ -31,7 +31,7 @@ use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 
-$VERSION = '1.80';
+$VERSION = '1.87';
 
 sub ProcessFujiDir($$$);
 sub ProcessFaceRec($$$);
@@ -222,6 +222,7 @@ my %faceCategories = (
     },
     0x100a => { #2
         Name => 'WhiteBalanceFineTune',
+        Notes => 'newer cameras should divide these values by 20', #forum10800
         Writable => 'int32s',
         Count => 2,
         PrintConv => 'sprintf("Red %+d, Blue %+d", split(" ", $val))',
@@ -252,6 +253,23 @@ my %faceCategories = (
             0x280 => '-1 (medium weak)', #8 ("NR-1")
             0x2c0 => '-3 (very weak)', #10 (-3)
             0x2e0 => '-4 (weakest)', #10 (-4)
+        },
+    },
+    0x100f => { #PR158
+        Name => 'Clarity',
+        Writable => 'int32s', #PH
+        PrintConv => {
+            -5000 => '-5',
+            -4000 => '-4',
+            -3000 => '-3',
+            -2000 => '-2',
+            -1000 => '-1',
+            0 => '0',
+            1000 => '1',
+            2000 => '2',
+            3000 => '3',
+            4000 => '4',
+            5000 => '5',
         },
     },
     0x1010 => {
@@ -444,7 +462,7 @@ my %faceCategories = (
         PrintConv => { 0 => 'Off', 1 => 'On' },
     },
     0x1047 => { #12
-        Name => 'GrainEffect',
+        Name => 'GrainEffectRoughness',
         Writable => 'int32s',
         PrintConv => {
             0 => 'Off',
@@ -461,14 +479,29 @@ my %faceCategories = (
             64 => 'Strong',
         },
     },
-    0x1049 => { #12
+    0x1049 => { #12,forum14319
         Name => 'BWAdjustment',
         Notes => 'positive values are warm, negative values are cool',
         Format => 'int8s',
         PrintConv => '$val > 0 ? "+$val" : $val',
         PrintConvInv => '$val + 0',
     },
-    # 0x104b - BWAdjustment for Green->Magenta (forum10800)
+    0x104b => { #forum10800,forum14319
+        Name => 'BWMagentaGreen',
+        Notes => 'positive values are green, negative values are magenta',
+        Format => 'int8s',
+        PrintConv => '$val > 0 ? "+$val" : $val',
+        PrintConvInv => '$val + 0',
+    },
+    0x104c => { #PR158
+        Name => "GrainEffectSize",
+        Writable => 'int16u', #PH
+        PrintConv => {
+            0 => 'Off',
+            16 => 'Small',
+            32 => 'Large',
+        },
+    },
     0x104d => { #forum9634
         Name => 'CropMode',
         Writable => 'int16u',
@@ -477,6 +510,15 @@ my %faceCategories = (
             1 => 'Full-frame on GFX', #IB
             2 => 'Sports Finder Mode', # (mechanical shutter)
             4 => 'Electronic Shutter 1.25x Crop', # (continuous high)
+        },
+    },
+    0x104e => { #forum10800 (X-Pro3)
+        Name => 'ColorChromeFXBlue',
+        Writable => 'int32s',
+        PrintConv => {
+            0 => 'Off',
+            32 => 'Weak', # (NC)
+            64 => 'Strong',
         },
     },
     0x1050 => { #forum6109
@@ -673,15 +715,6 @@ my %faceCategories = (
         PrintConv => '"$val%"',
         PrintConvInv => '$val=~s/\s*\%$//; $val',
     },
-    0x104e => { #forum10800 (X-Pro3)
-        Name => 'ColorChromeFXBlue',
-        Writable => 'int32s',
-        PrintConv => {
-            0 => 'Off',
-            32 => 'Weak', # (NC)
-            64 => 'Strong',
-        },
-    },
     0x1422 => { #8
         Name => 'ImageStabilization',
         Writable => 'int16u',
@@ -689,8 +722,9 @@ my %faceCategories = (
         PrintConv => [{
             0 => 'None',
             1 => 'Optical', #PH
-            2 => 'Sensor-shift', #PH
+            2 => 'Sensor-shift', #PH (now IBIS/OIS, ref forum13708)
             3 => 'OIS Lens', #forum9815 (optical+sensor?)
+            258 => 'IBIS/OIS + DIS', #forum13708 (digital on top of IBIS/OIS)
             512 => 'Digital', #PH
         },{
             0 => 'Off',
@@ -762,6 +796,9 @@ my %faceCategories = (
         },
         PrintConvInv => '$val=~/(0x[0-9a-f]+)/i; hex $1',
     },
+    0x1447 => { Name => 'FujiModel',  Writable => 'string' },
+    0x1448 => { Name => 'FujiModel2', Writable => 'string' },
+    0x144d => { Name => 'RollAngle',  Writable => 'rational64s' }, #forum14319
     0x3803 => { #forum10037
         Name => 'VideoRecordingMode',
         Groups => { 2 => 'Video' },
@@ -771,6 +808,7 @@ my %faceCategories = (
             0x00 => 'Normal',
             0x10 => 'F-log',
             0x20 => 'HLG',
+            0x30 => 'F-log2', #forum14384
         },
     },
     0x3804 => { #forum10037
@@ -841,6 +879,24 @@ my %faceCategories = (
             1 => 'Face',
             2 => 'Left Eye',
             3 => 'Right Eye',
+            7 => 'Body',
+            8 => 'Head',
+            11 => 'Bike',
+            12 => 'Body of Car',
+            13 => 'Front of Car',
+            14 => 'Animal Body',
+            15 => 'Animal Head',
+            16 => 'Animal Face',
+            17 => 'Animal Left Eye',
+            18 => 'Animal Right Eye',
+            19 => 'Bird Body',
+            20 => 'Bird Head',
+            21 => 'Bird Left Eye',
+            22 => 'Bird Right Eye',
+            23 => 'Aircraft Body',
+            25 => 'Aircraft Cockpit',
+            26 => 'Train Front',
+            27 => 'Train Cockpit',
         },'REPEAT'],
     },
     # 0x4202 int8u[-1] - number of cooredinates in each rectangle? (ref 11)
@@ -1025,7 +1081,7 @@ my %faceCategories = (
         Mask => 0x000000ff,
         PrintConv => {
             0 => 'Single',
-            1 => 'Continuous Low',
+            1 => 'Continuous Low', # not used by X-H2S? (see forum13777)
             2 => 'Continuous High',
         },
     },
@@ -1316,6 +1372,7 @@ my %faceCategories = (
     0xf007 => {
         Name => 'StripOffsets',
         IsOffset => 1,
+        IsImageData => 1,
         OffsetPair => 0xf008,  # point to associated byte counts
     },
     0xf008 => {
@@ -1614,11 +1671,11 @@ sub ProcessRAF($$)
     my ($rafNum, $ifdNum) = ('','');
     foreach $offset (0x5c, 0x64, 0x78, 0x80) {
         last if $offset >= $jpos;
-        unless ($raf->Seek($offset, 0) and $raf->Read($buff, 4)) {
+        unless ($raf->Seek($offset, 0) and $raf->Read($buff, 8)) {
             $warn = 1;
             last;
         }
-        my $start = unpack('N',$buff);
+        my ($start, $len) = unpack('N2',$buff);
         next unless $start;
         if ($offset == 0x64 or $offset == 0x80) {
             # parse FujiIFD directory
@@ -1629,7 +1686,10 @@ sub ProcessRAF($$)
             $$et{SET_GROUP1} = "FujiIFD$ifdNum";
             my $tagTablePtr = GetTagTable('Image::ExifTool::FujiFilm::IFD');
             # this is TIFF-format data only for some models, so no warning if it fails
-            $et->ProcessTIFF(\%dirInfo, $tagTablePtr, \&Image::ExifTool::ProcessTIFF);
+            unless ($et->ProcessTIFF(\%dirInfo, $tagTablePtr, \&Image::ExifTool::ProcessTIFF)) {
+                # do MD5 of image data if necessary
+                $et->ImageDataMD5($raf, $len, 'raw') if $$et{ImageDataMD5} and $raf->Seek($start,0);
+            }
             delete $$et{SET_GROUP1};
             $ifdNum = ($ifdNum || 1) + 1;
         } else {
@@ -1670,7 +1730,7 @@ FujiFilm maker notes in EXIF information, and to read/write FujiFilm RAW
 
 =head1 AUTHOR
 
-Copyright 2003-2022, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

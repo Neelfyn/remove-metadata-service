@@ -561,7 +561,21 @@ sub AddStructType($$$$;$)
 }
 
 #------------------------------------------------------------------------------
-# Hack to use XMP writer for SphericalVideoXML
+# Process SphericalVideoXML (see XMP-GSpherical tags documentation)
+# Inputs: 0) ExifTool ref, 1) dirInfo ref, 2) tag table ref
+# Returns: SphericalVideoXML data
+sub ProcessGSpherical($$$)
+{
+    my ($et, $dirInfo, $tagTablePtr) = @_;
+    # extract SphericalVideoXML as a block if requested
+    if ($$et{REQ_TAG_LOOKUP}{sphericalvideoxml}) {
+        $et->FoundTag(SphericalVideoXML => substr(${$$dirInfo{DataPt}}, 16));
+    }
+    return Image::ExifTool::XMP::ProcessXMP($et, $dirInfo, $tagTablePtr);
+}
+
+#------------------------------------------------------------------------------
+# Hack to use XMP writer for SphericalVideoXML (see XMP-GSpherical tags documentation)
 # Inputs: 0) ExifTool ref, 1) dirInfo ref, 2) tag table ref
 # Returns: SphericalVideoXML data
 sub WriteGSpherical($$$)
@@ -1476,7 +1490,7 @@ sub WriteXMP($$;$)
             my @ns = sort keys %nsCur;
             $long[-2] .= "$nl$sp<$prop rdf:about='${about}'";
             # generate et:toolkit attribute if this is an exiftool RDF/XML output file
-            if (@ns and $nsCur{$ns[0]} =~ m{^http://ns.exiftool.(?:ca|org)/}) {
+            if ($$et{XMP_NO_XMPMETA} and @ns and $nsCur{$ns[0]} =~ m{^http://ns.exiftool.(?:ca|org)/}) {
                 $long[-2] .= "\n$sp${sp}xmlns:et='http://ns.exiftool.org/1.0/'" .
                             " et:toolkit='Image::ExifTool $Image::ExifTool::VERSION'";
             }
@@ -1621,7 +1635,7 @@ This file contains routines to write XMP metadata.
 
 =head1 AUTHOR
 
-Copyright 2003-2022, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
