@@ -1,7 +1,7 @@
 # Remove Metadata
 [Remove Metadata](https://github.com/Neelfyn/remove-metadata-service) is a Quick Action for macOS. It adds a "service" context menu item, as well as an icon in the preview bar in the Finder, which both let you conveniently strip metadata (such as camera model and GPS location) from images, PDFs, and some video files.
 
-It is compatible with Mac OS X 10.7 Lion through macOS 13 Ventura.
+It is compatible with Mac OS X 10.7 Lion through macOS 14 Sonoma.
 
 ## Installation
 
