@@ -58,6 +58,7 @@ Pictures:
 * JPEG 2000
 * HEIC, HEIF
 * TIFF
+* WebP
 * Photoshop, Illustrator
 * PostScript
 * DNG
