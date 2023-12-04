@@ -88,7 +88,7 @@ sub ProcessCTMD($$$);
 sub ProcessExifInfo($$$);
 sub SwapWords($);
 
-$VERSION = '4.66';
+$VERSION = '4.71';
 
 # Note: Removed 'USM' from 'L' lenses since it is redundant - PH
 # (or is it?  Ref 32 shows 5 non-USM L-type lenses)
@@ -490,6 +490,7 @@ $VERSION = '4.66';
    '368.11' => 'Sigma 70mm f/2.8 DG Macro', #IB (A018)
    '368.12' => 'Sigma 18-35mm f/1.8 DC HSM | A', #50
    '368.13' => 'Sigma 24-105mm f/4 DG OS HSM | A', #forum3833
+   '368.14' => 'Sigma 18-300mm f/3.5-6.3 DC Macro OS HSM | C', #forum15280 (014)
     # Note: LensType 488 (0x1e8) is reported as 232 (0xe8) in 7D CameraSettings
     488 => 'Canon EF-S 15-85mm f/3.5-5.6 IS USM', #PH
     489 => 'Canon EF 70-300mm f/4-5.6L IS USM', #Gerald Kapounek
@@ -608,18 +609,25 @@ $VERSION = '4.66';
    '61182.33' => 'Canon RF 400mm F2.8L IS USM + RF1.4x', #IB
    '61182.34' => 'Canon RF 400mm F2.8L IS USM + RF2x', #IB
    '61182.35' => 'Canon RF 600mm F4L IS USM', #GiaZopatti
-   '61182.36' => 'Canon RF 15-30mm F4.5-6.3 IS STM', #42
-   '61182.37' => 'Canon RF 800mm F5.6L IS USM', #42
-   '61182.38' => 'Canon RF 800mm F5.6L IS USM + RF1.4x', #42
-   '61182.39' => 'Canon RF 800mm F5.6L IS USM + RF2x', #42
-   '61182.40' => 'Canon RF 1200mm F8L IS USM', #42
-   '61182.41' => 'Canon RF 1200mm F8L IS USM + RF1.4x', #42
-   '61182.42' => 'Canon RF 1200mm F8L IS USM + RF2x', #42
-   '61182.43' => 'Canon RF 135mm F1.8 L IS USM', #42
-   '61182.44' => 'Canon RF 24-50mm F4.5-6.3 IS STM', #42
-   '61182.45' => 'Canon RF-S 55-210mm F5-7.1 IS STM', #42
+   '61182.36' => 'Canon RF 600mm F4L IS USM + RF1.4x', #42
+   '61182.37' => 'Canon RF 600mm F4L IS USM + RF2x', #42
+   '61182.38' => 'Canon RF 800mm F5.6L IS USM', #42
+   '61182.39' => 'Canon RF 800mm F5.6L IS USM + RF1.4x', #42
+   '61182.40' => 'Canon RF 800mm F5.6L IS USM + RF2x', #42
+   '61182.41' => 'Canon RF 1200mm F8L IS USM', #42
+   '61182.42' => 'Canon RF 1200mm F8L IS USM + RF1.4x', #42
+   '61182.43' => 'Canon RF 1200mm F8L IS USM + RF2x', #42
+   '61182.44' => 'Canon RF 5.2mm F2.8L Dual Fisheye 3D VR', #PH
+   '61182.45' => 'Canon RF 15-30mm F4.5-6.3 IS STM', #42
+   '61182.46' => 'Canon RF 135mm F1.8 L IS USM', #42
+   '61182.47' => 'Canon RF 24-50mm F4.5-6.3 IS STM', #42
+   '61182.48' => 'Canon RF-S 55-210mm F5-7.1 IS STM', #42
+   '61182.49' => 'Canon RF 100-300mm F2.8L IS USM', #42
+   '61182.50' => 'Canon RF 100-300mm F2.8L IS USM + RF1.4x', #42
+   '61182.51' => 'Canon RF 100-300mm F2.8L IS USM + RF2x', #42
+   '61182.52' => 'Canon RF 10-20mm F4 L IS STM', #42
+   '61182.53' => 'Canon RF 28mm F2.8 STM', #42
     # we need the RFLensType values for the following...
-   '61182.46' => 'Canon RF 5.2mm F2.8L Dual Fisheye 3D VR', #PH (NC)
     65535 => 'n/a',
 );
 
@@ -983,6 +991,8 @@ $VERSION = '4.66';
     0x80000480 => 'EOS R50', #42
     0x80000481 => 'EOS R6 Mark II', #42
     0x80000487 => 'EOS R8', #42
+    0x80000491 => 'PowerShot V10', #25
+    0x80000498 => 'EOS R100', #25
     0x80000520 => 'EOS D2000C', #IB
     0x80000560 => 'EOS D6000C', #PH (guess)
 );
@@ -1382,6 +1392,16 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             SubDirectory => { TagTable => 'Image::ExifTool::Canon::CameraInfo60D' },
         },
         {
+            Name => 'CanonCameraInfoR6',
+            Condition => '$$self{Model} =~ /\bEOS R6$/',
+            SubDirectory => { TagTable => 'Image::ExifTool::Canon::CameraInfoR6' },
+        },
+        {
+            Name => 'CanonCameraInfoG5XII',
+            Condition => '$$self{Model} =~ /\bG5 X Mark II$/',
+            SubDirectory => { TagTable => 'Image::ExifTool::Canon::CameraInfoG5XII' },
+        },
+        {
             Name => 'CanonCameraInfoPowerShot',
             # valid if format is int32u[138] or int32u[148]
             Condition => '$format eq "int32u" and ($count == 138 or $count == 148)',
@@ -1695,6 +1715,12 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         # (can't yet write 1D raw files)
         # Writable => 'int32u',
         # Protected => 2,
+    },
+    0x82 => { #github219 (found on 1DS)
+         Name => 'RawDataLength',
+         # (can't yet write 1DS raw files)
+         # Writable => 'int32u',
+         # Protected => 2,
     },
     0x83 => { #PH
         Name => 'OriginalDecisionDataOffset',
@@ -2092,6 +2118,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             TagTable => 'Image::ExifTool::Canon::AFConfig',
         }
     },
+  # 0x402b - crop information (forum14904)
     0x403f => { #25
         Name => 'RawBurstModeRoll',
         SubDirectory => {
@@ -4680,6 +4707,57 @@ my %ciMaxFocal = (
     },
 );
 
+%Image::ExifTool::Canon::CameraInfoR6 = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS R6.',
+    0x0af1 => { #forum15210
+        Name => 'ShutterCount',
+        Format => 'int32u',
+        Notes => 'includes electronic + mechanical shutter',
+    },
+);
+
+# ref https://exiftool.org/forum/index.php?topic=15356.0
+%Image::ExifTool::Canon::CameraInfoG5XII = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS R6.',
+    0x0293 => {
+        Name => 'ShutterCount',
+        Format => 'int32u',
+        Notes => 'includes electronic + mechanical shutter',
+        # - advances by 1 for each photo file, regardless of mechanical or electronic shutter
+        # - does not advance for regular video files
+        # - advances for time lapse video files
+        # - creating a new directory or resetting the counter from the menu doesn't affect this shutter count
+    },
+    0x0b21 => {
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+    },
+    0x0b2d => {
+        Name => 'FileIndex',
+        Format => 'int32u',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    #0x0b39 => {
+    #    Name => 'DirectoryIndex',
+    #    Groups => { 2 => 'Image' },
+    #    Format => 'int32u',
+    #    ValueConv => '$val - 1',
+    #    ValueConvInv => '$val + 1',
+    #},
+);
+
 # Canon camera information for 70D (MakerNotes tag 0x0d) (ref PH)
 %Image::ExifTool::Canon::CameraInfo70D = (
     %binaryDataAttrs,
@@ -6856,16 +6934,24 @@ my %ciMaxFocal = (
             290 => 'Canon RF 400mm F2.8L IS USM + RF1.4x', #IB
             291 => 'Canon RF 400mm F2.8L IS USM + RF2x', #IB
             292 => 'Canon RF 600mm F4L IS USM', #GiaZopatti
+            293 => 'Canon RF 600mm F4L IS USM + RF1.4x', #42
+            294 => 'Canon RF 600mm F4L IS USM + RF2x', #42
             295 => 'Canon RF 800mm F5.6L IS USM', #42
             296 => 'Canon RF 800mm F5.6L IS USM + RF1.4x', #42
             297 => 'Canon RF 800mm F5.6L IS USM + RF2x', #42
             298 => 'Canon RF 1200mm F8L IS USM', #42
             299 => 'Canon RF 1200mm F8L IS USM + RF1.4x', #42
             300 => 'Canon RF 1200mm F8L IS USM + RF2x', #42
+            301 => 'Canon RF 5.2mm F2.8L Dual Fisheye 3D VR', #PH
             302 => 'Canon RF 15-30mm F4.5-6.3 IS STM', #42
             303 => 'Canon RF 135mm F1.8 L IS USM', #42
             304 => 'Canon RF 24-50mm F4.5-6.3 IS STM', #42
             305 => 'Canon RF-S 55-210mm F5-7.1 IS STM', #42
+            306 => 'Canon RF 100-300mm F2.8L IS USM', #42
+            307 => 'Canon RF 100-300mm F2.8L IS USM + RF1.4x', #42
+            308 => 'Canon RF 100-300mm F2.8L IS USM + RF2x', #42
+            312 => 'Canon RF 10-20mm F4 L IS STM', #42
+            313 => 'Canon RF 28mm F2.8 STM', #42
             # Note: add new RF lenses to %canonLensTypes with ID 61182
         },
     },
@@ -9060,8 +9146,14 @@ my %filterConv = (
     CMT3 => { # (CR3 files)
         Name => 'MakerNoteCanon',
         PreservePadding => 1,
+        Writable => 'undef', # (writable directory!)
+        # (note that ExifTool 12.68 and earlier lacked the ability to write this as a block,
+        #  and would instead add the maker notes the the CMT2 ExifIFD.  To remove these
+        #  incorrectly-placed maker notes, use "exiftool -exififd:makernotes= FILE")
+        MakerNotes => 1,
         SubDirectory => {
             TagTable => 'Image::ExifTool::Canon::Main',
+            DirName => 'MakerNotes', # (necessary for mechanism that prevents these from being deleted)
             ProcessProc => \&ProcessCMT3,
             WriteProc => \&Image::ExifTool::WriteTIFF,
         },
