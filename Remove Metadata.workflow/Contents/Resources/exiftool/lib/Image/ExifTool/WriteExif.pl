@@ -420,15 +420,15 @@ sub ValidateImageData($$$;$)
 }
 
 #------------------------------------------------------------------------------
-# Add specified image data to ImageDataMD5 hash
+# Add specified image data to ImageDataHash hash
 # Inputs: 0) ExifTool ref, 1) dirInfo ref, 2) lookup for [tagInfo,value] based on tagID
-sub AddImageDataMD5($$$)
+sub AddImageDataHash($$$)
 {
     my ($et, $dirInfo, $offsetInfo) = @_;
     my ($tagID, $offset, $buff);
 
     my $verbose = $et->Options('Verbose');
-    my $md5 = $$et{ImageDataMD5};
+    my $hash = $$et{ImageDataHash};
     my $raf = $$dirInfo{RAF};
 
     foreach $tagID (sort keys %$offsetInfo) {
@@ -451,12 +451,12 @@ sub AddImageDataMD5($$$)
             my $size = shift @sizes;
             next unless $offset =~ /^\d+$/ and $size and $size =~ /^\d+$/ and $size;
             next unless $raf->Seek($offset, 0); # (offset is absolute)
-            $total += $et->ImageDataMD5($raf, $size);
+            $total += $et->ImageDataHash($raf, $size);
         }
         if ($verbose) {
             my $name = "$$dirInfo{DirName}:$$tagInfo{Name}";
             $name =~ s/Offsets?|Start$//;
-            $et->VPrint(0, "$$et{INDENT}(ImageDataMD5: $total bytes of $name data)\n");
+            $et->VPrint(0, "$$et{INDENT}(ImageDataHash: $total bytes of $name data)\n");
         }
     }
 }
@@ -780,7 +780,7 @@ Entry:  for (;;) {
                     $readFormat = $oldFormat = Get16u($dataPt, $entry+2);
                     $readCount = $oldCount = Get32u($dataPt, $entry+4);
                     undef $oldImageData;
-                    if ($oldFormat < 1 or $oldFormat > 13 and not ($oldFormat == 16 and $$et{Make} eq 'Apple' and $inMakerNotes)) {
+                    if (($oldFormat < 1 or $oldFormat > 13) and $oldFormat != 129 and not ($oldFormat == 16 and $$et{Make} eq 'Apple' and $inMakerNotes)) {
                         my $msg = "Bad format ($oldFormat) for $name entry $index";
                         # patch to preserve invalid directory entries in SubIFD3 of
                         # various Kodak Z-series cameras (Z812, Z1085IS, Z1275)
@@ -930,8 +930,16 @@ Entry:  for (;;) {
                                     }
                                 }
                                 unless ($success) {
-                                    return undef if $et->Error("Error reading value for $name entry $index", $inMakerNotes);
-                                    ++$index;  $oldID = $newID;  next;  # drop this tag
+                                    my $wrn = sprintf("Error reading value for $name entry $index, ID 0x%.4x", $oldID);
+                                    my $truncOK;
+                                    if ($oldInfo and not $$oldInfo{Unknown}) {
+                                        $wrn .= " $$oldInfo{Name}";
+                                        $truncOK = $$oldInfo{TruncateOK};
+                                    }
+                                    return undef if $et->Error($wrn, $inMakerNotes || $truncOK);
+                                    unless ($truncOK) {
+                                        ++$index;  $oldID = $newID;  next;  # drop this tag
+                                    }
                                 }
                             } elsif (not $invalidPreview) {
                                 return undef if $et->Error("Bad $name offset for $tagStr", $inMakerNotes);
@@ -1094,6 +1102,8 @@ Entry:  for (;;) {
                 # add, edit or delete this tag
                 shift @newTags; # remove from list
                 my $curInfo = $set{$newID};
+                # don't allow MakerNotes to be added to ExifIFD of CR3 file
+                next if $newID == 0x927c and $isNew > 0 and $$et{FileType} eq 'CR3';
                 unless ($curInfo or $$addDirs{$newID}) {
                     # we can finally get the specific tagInfo reference for this tag
                     # (because we can now evaluate the Condition statement since all
@@ -1277,7 +1287,9 @@ NoWrite:            next if $isNew > 0;
                                 $et->Warn("Writing large value for $name",1);
                             }
                             # re-code if necessary
-                            if ($strEnc and $newFormName eq 'string') {
+                            if ($newFormName eq 'utf8') {
+                                $newValue = $et->Encode($newValue, 'UTF8');
+                            } elsif ($strEnc and $newFormName eq 'string') {
                                 $newValue = $et->Encode($newValue, $strEnc);
                             }
                         } else {
@@ -1427,8 +1439,8 @@ NoOverwrite:            next if $isNew > 0;
                     if ($$et{DEL_GROUP}{MakerNotes} and
                        ($$et{DEL_GROUP}{MakerNotes} != 2 or $isNew <= 0))
                     {
-                        if ($et->IsRawType()) {
-                            $et->WarnOnce("Can't delete MakerNotes from $$et{FileType}",1);
+                        if ($et->IsRawType() and not ($et->IsRawType() == 2 and $dirName eq 'ExifIFD')) {
+                            $et->Warn("Can't delete MakerNotes from $$et{FileType}",1);
                         } else {
                             if ($isNew <= 0) {
                                 ++$$et{CHANGED};
