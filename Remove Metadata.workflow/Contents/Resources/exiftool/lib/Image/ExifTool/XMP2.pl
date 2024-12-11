@@ -101,8 +101,22 @@ my %sPose = (
 my %sEarthPose = (
     STRUCT_NAME => 'EarthPose',
     NAMESPACE => { EarthPose => 'http://ns.google.com/photos/dd/1.0/earthpose/' },
-    Latitude  => { Writable => 'real', Groups => { 2 => 'Location' }, %latConv },
-    Longitude => { Writable => 'real', Groups => { 2 => 'Location' }, %longConv },
+    Latitude  => {
+        Writable => 'real',
+        Groups => { 2 => 'Location' }, 
+        ValueConv    => 'Image::ExifTool::GPS::ToDegrees($val, 1)',
+        ValueConvInv => '$val',
+        PrintConv    => 'Image::ExifTool::GPS::ToDMS($self, $val, 1, "N")',
+        PrintConvInv => 'Image::ExifTool::GPS::ToDegrees($val, 1, "lat")',
+    },
+    Longitude => {
+        Writable => 'real',
+        Groups => { 2 => 'Location' },
+        ValueConv    => 'Image::ExifTool::GPS::ToDegrees($val, 1)',
+        ValueConvInv => '$val',
+        PrintConv    => 'Image::ExifTool::GPS::ToDMS($self, $val, 1, "E")',
+        PrintConvInv => 'Image::ExifTool::GPS::ToDegrees($val, 1, "lon")',
+    },
     Altitude  => {
         Writable => 'real',
         Groups => { 2 => 'Location' },
@@ -224,6 +238,7 @@ my %sAppInfo = (
     fileDataRate    => { Writable => 'rational' },
     genre           => { },
     good            => { Writable => 'boolean' },
+    pick            => { Writable => 'integer' }, #forum15815
     instrument      => { },
     introTime       => { Struct => \%sTime },
     key => {
@@ -402,6 +417,18 @@ my %sLocationDetails = (
         Writable => 'rational',
         PrintConv => '$val =~ /^(inf|undef)$/ ? $val : "$val m"',
         PrintConvInv => '$val=~s/\s*m$//;$val',
+    },
+    GPSAltitudeRef  => {
+        Writable => 'integer',
+        PrintConv => {
+            OTHER => sub {
+                my ($val, $inv) = @_;
+                return undef unless $inv and $val =~ /^([-+0-9])/;
+                return($1 eq '-' ? 1 : 0);
+            },
+            0 => 'Above Sea Level',
+            1 => 'Below Sea Level',
+        },
     },
 );
 my %sCVTermDetails = (
@@ -844,7 +871,7 @@ my %prismPublicationDate = (
     NOTES => q{
         Publishing Requirements for Industry Standard Metadata 3.0 namespace
         tags.  (see
-        L<https://www.w3.org/Submission/2020/SUBM-prism-20200910/prism-basic.html/>)
+        L<https://www.w3.org/Submission/2020/SUBM-prism-20200910/prism-basic.html>)
     },
     academicField   => { }, # (3.0)
     aggregateIssueNumber => { Writable => 'integer' }, # (3.0)
@@ -1373,6 +1400,57 @@ my %sSubVersion = (
     Snapshots           => { List => 'Bag', Binary => 1 },
 );
 
+# ACDSee region tags (ref BKW)
+my %sACDSeeDimensions = (
+    STRUCT_NAME => 'ACDSeeDimensions',
+    NAMESPACE   => {'acdsee-stDim' => 'http://ns.acdsee.com/sType/Dimensions#'},
+    'w'         => { Writable => 'real' },
+    'h'         => { Writable => 'real' },
+    'unit'      => { },
+);
+my %sACDSeeArea = (
+    STRUCT_NAME => 'ACDSeeArea',
+    NAMESPACE => { 'acdsee-stArea' => 'http://ns.acdsee.com/sType/Area#' },
+    'x'     => { Writable => 'real' },
+    'y'     => { Writable => 'real' },
+    w       => { Writable => 'real' },
+    h       => { Writable => 'real' },
+);
+my %sACDSeeRegionStruct = (
+    STRUCT_NAME     => 'ACDSeeRegion',
+    NAMESPACE       => 'acdsee-rs',
+    ALGArea         => { Struct => \%sACDSeeArea },
+    DLYArea         => { Struct => \%sACDSeeArea },
+    Name            => { },
+    NameAssignType  => { },
+    Type            => { },
+);
+%Image::ExifTool::XMP::ACDSeeRegions = (
+    GROUPS => { 0 => 'XMP', 1 => 'XMP-acdsee-rs', 2 => 'Image' },
+    NAMESPACE => 'acdsee-rs',
+    WRITABLE => 'string',
+    AVOID => 1,
+    Regions => {
+        Name => 'RegionInfoACDSee',
+        FlatName => 'ACDSee',
+        # the "Struct" entry defines the structure fields
+        Struct => {
+            # optional structure name (used for warning messages only)
+            STRUCT_NAME => 'ACDSeeRegionInfo',
+            NAMESPACE   => 'acdsee-rs',
+            RegionList => {
+                FlatName => 'Region',
+                Struct => \%sACDSeeRegionStruct,
+                List => 'Bag',
+            },
+            AppliedToDimensions => {
+                FlatName => 'RegionAppliedToDimensions',
+                Struct => \%sACDSeeDimensions,
+            },
+        },
+    },
+);
+
 # Picture Licensing Universal System namespace properties (xmpPLUS)
 %Image::ExifTool::XMP::xmpPLUS = (
     %xmpTableDefaults,
@@ -1857,6 +1935,7 @@ my %sSubVersion = (
     SpecialTypeID   => { List => 'Bag' },
     PortraitNote    => { },
     DisableAutoCreation => { List => 'Bag' },
+    DisableSuggestedAction => { List => 'Bag' }, #forum16147
     hdrp_makernote => {
         Name => 'HDRPMakerNote',
         # decoded data starts with the following bytes, but nothing yet is known about its contents:
@@ -1877,6 +1956,9 @@ my %sSubVersion = (
         ValueConv => 'Image::ExifTool::XMP::DecodeBase64($val)',
         ValueConvInv => 'Image::ExifTool::XMP::EncodeBase64($val)',
     },
+    MotionPhoto        => { Writable => 'integer' },
+    MotionPhotoVersion => { Writable => 'integer' },
+    MotionPhotoPresentationTimestampUs => { Writable => 'integer' },
 );
 
 # Google creations namespace (ref PH)
@@ -2042,35 +2124,41 @@ my %sSubVersion = (
 );
 
 # Google container tags (ref https://developer.android.com/guide/topics/media/platform/hdr-image-format)
-# NOTE: Not included because these namespace prefixes conflict with Google's depth-map Device tags!
+# NOTE: The namespace prefix used by ExifTool is 'GContainer' instead of 'Container'
+# dueo to a conflict with Google's depth-map Device 'Container' namespace!
 # (see ../pics/GooglePixel8Pro.jpg sample image)
-# %Image::ExifTool::XMP::Container = (
-#     %xmpTableDefaults,
-#     GROUPS => { 1 => 'XMP-Container', 2 => 'Image' },
-#     NAMESPACE => 'Container',
-#     NOTES => 'Google Container namespace.',
-#     Directory => {
-#         Name => 'ContainerDirectory',
-#         FlatName => 'Directory',
-#         List => 'Seq',
-#         Struct => {
-#             STRUCT_NAME => 'Directory',
-#             Item => {
-#                 Namespace => 'Container',
-#                 Struct => {
-#                     STRUCT_NAME => 'Item',
-#                     NAMESPACE => { Item => 'http://ns.google.com/photos/1.0/container/item/'},
-#                     Mime     => { },
-#                     Semantic => { },
-#                     Length   => { Writable => 'integer' },
-#                     Label    => { },
-#                     Padding  => { Writable => 'integer' },
-#                     URI      => { },
-#                 },
-#             },
-#         },
-#     },
-# );
+%Image::ExifTool::XMP::GContainer = (
+    %xmpTableDefaults,
+    GROUPS => { 1 => 'XMP-GContainer', 2 => 'Image' },
+    NAMESPACE => 'GContainer',
+    NOTES => q{
+        Google Container namespace.  ExifTool uses the prefix 'GContainer' instead
+        of 'Container' to avoid a conflict with the Google Device Container
+        namespace.
+    },
+    Directory => {
+        Name => 'ContainerDirectory',
+        FlatName => 'Directory',
+        List => 'Seq',
+        Struct => {
+            STRUCT_NAME => 'Directory',
+            Item => {
+                Namespace => 'GContainer',
+                Struct => {
+                    STRUCT_NAME => 'Item',
+                    # (use 'GItem' to avoid conflict with Google Device Container Item)
+                    NAMESPACE => { GItem => 'http://ns.google.com/photos/1.0/container/item/'},
+                    Mime     => { },
+                    Semantic => { },
+                    Length   => { Writable => 'integer' },
+                    Label    => { },
+                    Padding  => { Writable => 'integer' },
+                    URI      => { },
+                },
+            },
+        },
+    },
+);
 
 # Getty Images namespace (ref PH)
 %Image::ExifTool::XMP::GettyImages = (
@@ -2191,6 +2279,15 @@ my %sSubVersion = (
     GROUPS => { 0 => 'SVG', 2 => 'Unknown' },
     LANG_INFO => \&GetLangInfo,
     NAMESPACE => undef, # variable namespace
+    'c2pa:manifest' => {
+        Name => 'JUMBF',
+        Groups => { 0 => 'JUMBF' },
+        RawConv => 'Image::ExifTool::XMP::DecodeBase64($val)',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Jpeg2000::Main',
+            ByteOrder => 'BigEndian',
+        },
+    },
 );
 
 #------------------------------------------------------------------------------
@@ -2228,7 +2325,7 @@ This file contains definitions for less common XMP namespaces.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

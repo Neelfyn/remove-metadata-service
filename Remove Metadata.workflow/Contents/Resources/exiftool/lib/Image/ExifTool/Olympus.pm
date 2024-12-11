@@ -40,7 +40,7 @@ use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 use Image::ExifTool::APP12;
 
-$VERSION = '2.82';
+$VERSION = '2.83';
 
 sub PrintLensInfo($$$);
 
@@ -117,6 +117,7 @@ my %olympusLensTypes = (
     '0 36 10' => 'Olympus M.Zuiko Digital ED 8-25mm F4 Pro', #IB
     '0 37 10' => 'Olympus M.Zuiko Digital ED 40-150mm F4.0 Pro', #forum3833
     '0 39 10' => 'Olympus M.Zuiko Digital ED 90mm F3.5 Macro IS Pro', #forum3833
+    '0 40 10' => 'Olympus M.Zuiko Digital ED 150-600mm F5.0-6.3', #forum15652
     # Sigma lenses
     '1 01 00' => 'Sigma 18-50mm F3.5-5.6 DC', #8
     '1 01 10' => 'Sigma 30mm F2.8 EX DN', #NJ
@@ -196,6 +197,7 @@ my %olympusLensTypes = (
   # '65535 07 40' - Seen for LUMIX S 16-35/F4 on Panasonic DC-S1H (ref PH)
     # Other makes
     '24 01 10' => 'Venus Optics Laowa 50mm F2.8 2x Macro', #DonKomarechka
+    'f7 03 10' => 'LAOWA C&D-Dreamer MFT 7.5mm F2.0', #forum3833
 );
 
 # lookup for Olympus camera types (ref PH)
@@ -442,6 +444,7 @@ my %olympusCameraTypes = (
     S0093 => 'E-P7', #IB
     S0095 => 'OM-1', #IB
     S0101 => 'OM-5', #IB
+    S0121 => 'OM-1MarkII', #forum15652
     SR45 => 'D220',
     SR55 => 'D320L',
     SR83 => 'D340L',
@@ -1932,6 +1935,7 @@ my %indexInfo = (
             3 => 'Trains',
             4 => 'Birds',
             5 => 'Dogs & Cats',
+            6 => 'Human', #forum16072
         },{
             0 => 'Object Not Found',
             1 => 'Object Found',
@@ -2839,24 +2843,32 @@ my %indexInfo = (
         RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
-    0x100 => { Name => 'WB_RBLevels',       Writable => 'int16u', Count => 2 }, #6
+    0x100 => {  #6
+        Name => 'WB_RBLevels',
+        Writable => 'int16u',
+        Notes => q{
+            These tags store 2 values, red and blue levels, for some models, but 4
+            values, presumably RBGG levels, for other models
+        },
+        Count => -1,
+    }, #6
     # 0x101 - in-camera AutoWB unless it is all 0's or all 256's (ref IB)
-    0x102 => { Name => 'WB_RBLevels3000K',  Writable => 'int16u', Count => 2 }, #11
-    0x103 => { Name => 'WB_RBLevels3300K',  Writable => 'int16u', Count => 2 }, #11
-    0x104 => { Name => 'WB_RBLevels3600K',  Writable => 'int16u', Count => 2 }, #11
-    0x105 => { Name => 'WB_RBLevels3900K',  Writable => 'int16u', Count => 2 }, #11
-    0x106 => { Name => 'WB_RBLevels4000K',  Writable => 'int16u', Count => 2 }, #11
-    0x107 => { Name => 'WB_RBLevels4300K',  Writable => 'int16u', Count => 2 }, #11
-    0x108 => { Name => 'WB_RBLevels4500K',  Writable => 'int16u', Count => 2 }, #11
-    0x109 => { Name => 'WB_RBLevels4800K',  Writable => 'int16u', Count => 2 }, #11
-    0x10a => { Name => 'WB_RBLevels5300K',  Writable => 'int16u', Count => 2 }, #11
-    0x10b => { Name => 'WB_RBLevels6000K',  Writable => 'int16u', Count => 2 }, #11
-    0x10c => { Name => 'WB_RBLevels6600K',  Writable => 'int16u', Count => 2 }, #11
-    0x10d => { Name => 'WB_RBLevels7500K',  Writable => 'int16u', Count => 2 }, #11
-    0x10e => { Name => 'WB_RBLevelsCWB1',   Writable => 'int16u', Count => 2 }, #11
-    0x10f => { Name => 'WB_RBLevelsCWB2',   Writable => 'int16u', Count => 2 }, #11
-    0x110 => { Name => 'WB_RBLevelsCWB3',   Writable => 'int16u', Count => 2 }, #11
-    0x111 => { Name => 'WB_RBLevelsCWB4',   Writable => 'int16u', Count => 2 }, #11
+    0x102 => { Name => 'WB_RBLevels3000K',  Writable => 'int16u', Count => -1 }, #11
+    0x103 => { Name => 'WB_RBLevels3300K',  Writable => 'int16u', Count => -1 }, #11
+    0x104 => { Name => 'WB_RBLevels3600K',  Writable => 'int16u', Count => -1 }, #11
+    0x105 => { Name => 'WB_RBLevels3900K',  Writable => 'int16u', Count => -1 }, #11
+    0x106 => { Name => 'WB_RBLevels4000K',  Writable => 'int16u', Count => -1 }, #11
+    0x107 => { Name => 'WB_RBLevels4300K',  Writable => 'int16u', Count => -1 }, #11
+    0x108 => { Name => 'WB_RBLevels4500K',  Writable => 'int16u', Count => -1 }, #11
+    0x109 => { Name => 'WB_RBLevels4800K',  Writable => 'int16u', Count => -1 }, #11
+    0x10a => { Name => 'WB_RBLevels5300K',  Writable => 'int16u', Count => -1 }, #11
+    0x10b => { Name => 'WB_RBLevels6000K',  Writable => 'int16u', Count => -1 }, #11
+    0x10c => { Name => 'WB_RBLevels6600K',  Writable => 'int16u', Count => -1 }, #11
+    0x10d => { Name => 'WB_RBLevels7500K',  Writable => 'int16u', Count => -1 }, #11
+    0x10e => { Name => 'WB_RBLevelsCWB1',   Writable => 'int16u', Count => -1 }, #11
+    0x10f => { Name => 'WB_RBLevelsCWB2',   Writable => 'int16u', Count => -1 }, #11
+    0x110 => { Name => 'WB_RBLevelsCWB3',   Writable => 'int16u', Count => -1 }, #11
+    0x111 => { Name => 'WB_RBLevelsCWB4',   Writable => 'int16u', Count => -1 }, #11
     0x113 => { Name => 'WB_GLevel3000K',    Writable => 'int16u' }, #11
     0x114 => { Name => 'WB_GLevel3300K',    Writable => 'int16u' }, #11
     0x115 => { Name => 'WB_GLevel3600K',    Writable => 'int16u' }, #11
@@ -3243,6 +3255,7 @@ my %indexInfo = (
                     3 => 'Trains',
                     4 => 'Birds',
                     5 => 'Dogs & Cats',
+                    6 => 'Human', #forum16072
                 },{
                     0 => 'Face Priority',
                     1 => 'Target Priority',
@@ -4181,7 +4194,7 @@ Olympus or Epson maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

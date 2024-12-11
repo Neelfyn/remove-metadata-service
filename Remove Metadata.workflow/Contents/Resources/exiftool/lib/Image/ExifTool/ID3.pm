@@ -18,7 +18,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.59';
+$VERSION = '1.62';
 
 sub ProcessID3v2($$$);
 sub ProcessPrivate($$$);
@@ -66,6 +66,12 @@ my %pictureType = (
 my %dateTimeConv = (
     ValueConv => 'require Image::ExifTool::XMP; Image::ExifTool::XMP::ConvertXMPDate($val)',
     PrintConv => '$self->ConvertDateTime($val)',
+);
+
+# patch for names of user-defined tags which don't automatically generate very well
+my %userTagName = (
+    ALBUMARTISTSORT => 'AlbumArtistSort',
+    ASIN => 'ASIN',
 );
 
 # This table is just for documentation purposes
@@ -825,8 +831,8 @@ my %id3v2_common = (
 
 # lookup to check for existence of tags in other ID3 versions
 my %otherTable = (
-    \%Image::ExifTool::ID3::v2_4 => \%Image::ExifTool::ID3::v2_3,
-    \%Image::ExifTool::ID3::v2_3 => \%Image::ExifTool::ID3::v2_4,
+    \%Image::ExifTool::ID3::v2_4 => 'Image::ExifTool::ID3::v2_3',
+    \%Image::ExifTool::ID3::v2_3 => 'Image::ExifTool::ID3::v2_4',
 );
 
 # ID3 Composite tags
@@ -869,6 +875,19 @@ Image::ExifTool::AddCompositeTags('Image::ExifTool::ID3');
         $tagInfo{Groups} = { %$groups } if $groups;
         $Image::ExifTool::ID3::v2_4{$tag} = \%tagInfo;
     }
+}
+
+#------------------------------------------------------------------------------
+# Make tag name for user-defined tag
+# Inputs: 0) User defined tag description
+# Returns: Tag name
+sub MakeTagName($)
+{
+    my $name = shift;
+    return $userTagName{$name} if $userTagName{$name};
+    $name = ucfirst(lc $name) unless $name =~ /[a-z]/;  # convert all uppercase to mixed case
+    $name =~ s/([a-z])[_ ]([a-z])/$1\U$2/g;
+    return Image::ExifTool::MakeTagName($name);
 }
 
 #------------------------------------------------------------------------------
@@ -1098,6 +1117,7 @@ sub ProcessID3v2($$$)
     my $vers    = $$dirInfo{Version};
     my $verbose = $et->Options('Verbose');
     my $len;    # frame data length
+    my $otherTable;
 
     $et->VerboseDir($tagTablePtr->{GROUPS}->{1}, 0, $size);
     $et->VerboseDump($dataPt, Len => $size, Start => $offset);
@@ -1144,7 +1164,9 @@ sub ProcessID3v2($$$)
         last if $offset + $len > $size;
         my $tagInfo = $et->GetTagInfo($tagTablePtr, $id);
         unless ($tagInfo) {
-            my $otherTable = $otherTable{$tagTablePtr};
+            if (not $otherTable and $otherTable{$tagTablePtr}) {
+                $otherTable = GetTagTable($otherTable{$tagTablePtr});
+            }
             $tagInfo = $et->GetTagInfo($otherTable, $id) if $otherTable;
             if ($tagInfo) {
                 $et->WarnOnce("Frame '${id}' is not valid for this ID3 version", 1);
@@ -1244,25 +1266,34 @@ sub ProcessID3v2($$$)
             # two encoded strings separated by a null
             my @vals = DecodeString($et, $val);
             foreach (0..1) { $vals[$_] = '' unless defined $vals[$_]; }
-            ($val = "($vals[0]) $vals[1]") =~ s/^\(\) //;
+            if (length $vals[0]) {
+                $id .= "_$vals[0]";
+                $tagInfo = $$tagTablePtr{$id} || AddTagToTable($tagTablePtr, $id, MakeTagName($vals[0]));
+            }
+            $val = $vals[1];
         } elsif ($id =~ /^T/ or $id =~ /^(IPL|IPLS|GP1|MVI|MVN)$/) {
             $val = DecodeString($et, $val);
         } elsif ($id =~ /^(WXX|WXXX)$/) {
             # one encoded string and one Latin string separated by a null
             my $enc = unpack('C', $val);
-            my $url;
+            my ($tag, $url);
             if ($enc == 1 or $enc == 2) {
-                ($val, $url) = ($val =~ /^(.(?:..)*?)\0\0(.*)/s);
+                ($tag, $url) = ($tag =~ /^(.(?:..)*?)\0\0(.*)/s);
             } else {
-                ($val, $url) = ($val =~ /^(..*?)\0(.*)/s);
+                ($tag, $url) = ($tag =~ /^(..*?)\0(.*)/s);
             }
-            unless (defined $val and defined $url) {
+            unless (defined $tag and defined $url) {
                 $et->Warn("Invalid $id frame value");
                 next;
             }
-            $val = DecodeString($et, $val);
+            $tag = DecodeString($et, $tag);
+            if (length $tag) {
+                $id .= "_$tag";
+                $tag .= '_URL' unless $tag =~ /url/i;
+                $tagInfo = $$tagTablePtr{$id} || AddTagToTable($tagTablePtr, $id, MakeTagName($tag));
+            }
             $url =~ s/\0.*//s;
-            $val = length($val) ? "($val) $url" : $url;
+            $val = $url;
         } elsif ($id =~ /^W/) {
             $val =~ s/\0.*//s;  # truncate at null
         } elsif ($id =~ /^(COM|COMM|ULT|USLT)$/) {
@@ -1405,7 +1436,7 @@ sub ProcessID3($$)
     $$et{DoneID3} = 1;
 
     # allow this to be called with either RAF or DataPt
-    my $raf = $$dirInfo{RAF} || new File::RandomAccess($$dirInfo{DataPt});
+    my $raf = $$dirInfo{RAF} || File::RandomAccess->new($$dirInfo{DataPt});
     my ($buff, %id3Header, %id3Trailer, $hBuff, $tBuff, $eBuff, $tagTablePtr);
     my $rtnVal = 0;
     my $hdrEnd = 0;
@@ -1715,7 +1746,7 @@ other types of audio files.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

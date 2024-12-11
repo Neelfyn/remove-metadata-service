@@ -19,6 +19,7 @@ use Image::ExifTool::GPS;
 $VERSION = '1.09';
 
 sub ProcessDJIInfo($$$);
+sub Process_djmd($$$);
 
 my %convFloat2 = (
     PrintConv => 'sprintf("%+.2f", $val)',
@@ -186,6 +187,34 @@ my %convFloat2 = (
     },
 );
 
+# TODO - eventually add ability to decode this?
+%Image::ExifTool::DJI::djmd = (
+    PROCESS_PROC => \&Process_djmd,
+);
+
+#------------------------------------------------------------------------------
+# Process DJI djmd timed data from Action4 videos (ref PH)
+# Inputs: 0) ExifTool ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+# TODO: work in progress
+sub Process_djmd($$$)
+{
+    my ($et, $dirInfo, $tagTbl) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    my ($pos, $bit, $val) = (6, 0, 0);
+    for (;;) {
+        my $v = Get8u($dataPt, $pos);
+        $val += ($v & 0x7f) << $bit;
+        last unless $v & 0x80;
+        ++$pos;
+        $bit += 7;
+    }
+    $pos += 49;
+    my @a = unpack("x${pos}fxfxfxfx3fxfxf", $$dataPt);
+    print "$val @a\n";
+    return 1;
+}
+
 #------------------------------------------------------------------------------
 # Process DJI info (ref PH)
 # Inputs: 0) ExifTool ref, 1) dirInfo ref, 2) tag table ref
@@ -237,7 +266,7 @@ the maker notes in images from some DJI Phantom drones.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

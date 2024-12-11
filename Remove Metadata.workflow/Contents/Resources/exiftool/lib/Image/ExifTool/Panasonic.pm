@@ -37,7 +37,7 @@ use vars qw($VERSION %leicaLensTypes);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 
-$VERSION = '2.21';
+$VERSION = '2.22';
 
 sub ProcessLeicaLEIC($$$);
 sub WhiteBalanceConv($;$$);
@@ -366,6 +366,7 @@ my %shootingMode = (
                 '32 1'  => '3-area (left)?', # (DMC-L1 guess)
                 '32 2'  => '3-area (center)?', # (DMC-L1 guess)
                 '32 3'  => '3-area (right)?', # (DMC-L1 guess)
+                # '32 16' ? (DC-GH6)
                 '64 0'  => 'Face Detect',
                 '64 1' => 'Face Detect (animal detect on)', #forum11194
                 '64 2' => 'Face Detect (animal detect off)', #forum11194
@@ -2186,6 +2187,10 @@ my %shootingMode = (
         Writable => 'rational64u',
         Count => 2,
     },
+    0x0370 => { #forum15440
+        Name => 'LensProfileName',
+        Writable => 'string',
+    },
 );
 
 # Type 2 tags (ref PH)
@@ -2507,6 +2512,27 @@ my %shootingMode = (
             Start => 12,
         },
     },
+);
+
+# Leica XMP Digital Shift Assistant tags
+%Image::ExifTool::Panasonic::DSA = (
+    GROUPS => { 0 => 'XMP', 1 => 'XMP-xmpDSA', 2 => 'Image' },
+    PROCESS_PROC => 'Image::ExifTool::XMP::ProcessXMP',
+    NAMESPACE => 'xmpDSA',
+    WRITABLE => 'string',
+    AVOID => 1,
+    VARS => { NO_ID => 1 },
+    NOTES => 'XMP Digital Shift Assistant tags written by some Leica cameras.',
+    Version             => { }, # eg. "1.0.0"
+    CorrectionAlreadyApplied => { Writable => 'boolean' },
+    PitchAngle          => { Writable => 'real' },
+    RollAngle           => { Writable => 'real' },
+    FocalLength35mm     => { Writable => 'real' },
+    TargetAspectRatio   => { Writable => 'real' },
+    ScalingFactorHeight => { Writable => 'real' },
+    ValidCropCorners    => { Writable => 'boolean' },
+    ApplyAutomatically  => { Writable => 'boolean' },
+    NormalizedCropCorners => { Writable => 'real', List => 'Seq' },
 );
 
 # Panasonic Composite tags
@@ -2876,7 +2902,7 @@ Panasonic and Leica maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -50,7 +50,7 @@ use Image::ExifTool::Exif;
 use Image::ExifTool::GPS;
 require Exporter;
 
-$VERSION = '3.61';
+$VERSION = '3.67';
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(EscapeXML UnescapeXML);
 
@@ -171,6 +171,7 @@ my %xmpNS = (
     pmi       => 'http://prismstandard.org/namespaces/pmi/2.2/',
     prm       => 'http://prismstandard.org/namespaces/prm/3.0/',
     acdsee    => 'http://ns.acdsee.com/iptc/1.0/',
+   'acdsee-rs'=> 'http://ns.acdsee.com/regions/',
     digiKam   => 'http://www.digikam.org/ns/1.0/',
     swf       => 'http://ns.adobe.com/swf/1.0/',
     cell      => 'http://developer.sonyericsson.com/cell/1.0/',
@@ -201,8 +202,10 @@ my %xmpNS = (
     nine      => 'http://ns.nikon.com/nine/1.0/',
     hdr_metadata => 'http://ns.adobe.com/hdr-metadata/1.0/',
     hdrgm     => 'http://ns.adobe.com/hdr-gain-map/1.0/',
-  # Note: Not included due to namespace prefix conflict with Device:Container
-  # Container => 'http://ns.google.com/photos/1.0/container/',
+    xmpDSA    => 'http://leica-camera.com/digital-shift-assistant/1.0/',
+    # Note: Google uses a prefix of 'Container', but this conflicts with the
+    # Device Container namespace, also by Google.  So call this one GContainer
+    GContainer=> 'http://ns.google.com/photos/1.0/container/',
 );
 
 # build reverse namespace lookup
@@ -281,11 +284,12 @@ my %recognizedAttrs = (
 # NOTE: this lookup is duplicated in TagLookup.pm!!
 %specialStruct = (
     STRUCT_NAME => 1, # [optional] name of structure
-    NAMESPACE   => 1, # [mandatory] namespace prefix used for fields of this structure
+    NAMESPACE   => 1, # [mandatory for XMP] namespace prefix used for fields of this structure
     NOTES       => 1, # [optional] notes for documentation about this structure
     TYPE        => 1, # [optional] rdf:type resource for struct (if used, the StructType flag
                       # will be set automatically for all derived flattened tags when writing)
     GROUPS      => 1, # [optional] specifies family group 2 name for the structure
+    SORT_ORDER  => 1, # [optional] order for sorting fields in documentation
 );
 # XMP structures (each structure is similar to a tag table so we can
 # recurse through them in SetPropertyPath() as if they were tag tables)
@@ -801,6 +805,10 @@ my %sRangeMask = (
         Name => 'acdsee',
         SubDirectory => { TagTable => 'Image::ExifTool::XMP::acdsee' },
     },
+   'acdsee-rs' => {
+        Name => 'acdsee-rs',
+        SubDirectory => { TagTable => 'Image::ExifTool::XMP::ACDSeeRegions' },
+    },
     digiKam => {
         Name => 'digiKam',
         SubDirectory => { TagTable => 'Image::ExifTool::XMP::digiKam' },
@@ -921,11 +929,14 @@ my %sRangeMask = (
         Name => 'hdrgm',
         SubDirectory => { TagTable => 'Image::ExifTool::XMP::hdrgm' },
     },
-  # Note: Note included due to namespace prefix conflict with Device:Container
-  # Container => {
-  #     Name => 'Container',
-  #     SubDirectory => { TagTable => 'Image::ExifTool::XMP::Container' },
-  # },
+    xmpDSA => {
+        Name => 'xmpDSA',
+        SubDirectory => { TagTable => 'Image::ExifTool::Panasonic::DSA' },
+    },
+    GContainer => {
+        Name => 'GContainer',
+        SubDirectory => { TagTable => 'Image::ExifTool::XMP::GContainer' },
+    },
 );
 
 # hack to allow XML containing Dublin Core metadata to be handled like XMP (eg. EPUB - see ZIP.pm)
@@ -2005,6 +2016,7 @@ my %sPantryItem = (
         Writable => 'integer',
         List => 'Seq',
         AutoSplit => 1,
+        Notes => 'deprecated',
     },
     OECF => {
         Name => 'Opto-ElectricConvFactor',
@@ -2256,7 +2268,7 @@ my %sPantryItem = (
             3 => 'Distant',
         },
     },
-    ImageUniqueID   => { },
+    ImageUniqueID   => { Avoid => 1, Notes => 'moved to exifEX namespace in 2024 spec' },
     GPSVersionID    => { Groups => { 2 => 'Location' } },
     GPSLatitude     => { Groups => { 2 => 'Location' }, %latConv },
     GPSLongitude    => { Groups => { 2 => 'Location' }, %longConv },
@@ -2498,6 +2510,15 @@ my %sPantryItem = (
             Values =>   { List => 'Seq', Writable => 'rational' },
         },
     },
+    # new in Exif 3.0
+    ImageUniqueID   => { },
+    ImageTitle      => { },
+    ImageEditor     => { },
+    Photographer    => { Groups => { 2 => 'Author' } },
+    CameraFirmware  => { Groups => { 2 => 'Camera' } },
+    RAWDevelopingSoftware   => { },
+    ImageEditingSoftware    => { },
+    MetadataEditingSoftware => { },
 );
 
 # Auxiliary namespace properties (aux) - not fully documented (ref PH)
@@ -2549,7 +2570,17 @@ my %sPantryItem = (
             return $val;
         },
     },
-    ApproximateFocusDistance => { Writable => 'rational' }, #PH (LR3)
+    ApproximateFocusDistance => {
+        Writable => 'rational',
+        PrintConv => {
+            4294967295 => 'infinity',
+            OTHER => sub {
+                my ($val, $inv) = @_;
+                return $val eq 'infinity' ? 4294967295 : $val if $inv;
+                return $val eq 4294967295 ? 'infinity' : $val;
+            },
+        },
+    }, #PH (LR3)
     # the following new in LR6 (ref forum6497)
     IsMergedPanorama         => { Writable => 'boolean' },
     IsMergedHDR              => { Writable => 'boolean' },
@@ -2567,6 +2598,7 @@ my %sPantryItem = (
     EnhanceDenoiseAlreadyApplied    => { Writable => 'boolean' }, #forum14760
     EnhanceDenoiseVersion           => { }, #forum14760 integer?
     EnhanceDenoiseLumaAmount        => { }, #forum14760 integer?
+    # FujiRatingAlreadyApplied - boolean written by LR classic 13.2 (forum15815)
 );
 
 # IPTC Core namespace properties (Iptc4xmpCore) (ref 4)
@@ -3639,6 +3671,7 @@ NoLoop:
             IgnoreProp => $$subdir{IgnoreProp}, # (allow XML to ignore specified properties)
             IsExtended => 1, # (hack to avoid Duplicate warning for embedded XMP)
             NoStruct => 1,   # (don't try to build structures since this isn't true XMP)
+            NoBlockSave => 1,# (don't save as a block because we already did this)
         );
         my $oldOrder = GetByteOrder();
         SetByteOrder($$subdir{ByteOrder}) if $$subdir{ByteOrder};
@@ -3754,8 +3787,13 @@ sub ParseXMPElement($$$;$$$$)
 
         # extract property attributes
         my ($parseResource, %attrs, @attrs);
-        while ($attrs =~ m/(\S+?)\s*=\s*(['"])(.*?)\2/sg) {
-            my ($attr, $val) = ($1, $3);
+# this hangs Perl (v5.18.4) for a specific capture string [patched in ExifTool 12.98]
+#        while ($attrs =~ m/(\S+?)\s*=\s*(['"])(.*?)\2/sg) {
+        while ($attrs =~ /(\S+?)\s*=\s*(['"])/g) {
+            my ($attr, $quote) = ($1, $2);
+            my $p0 = pos($attrs);
+            last unless $attrs =~ /$quote/g;
+            my $val = substr($attrs, $p0, pos($attrs)-$p0-1);
             # handle namespace prefixes (defined by xmlns:PREFIX, or used with PREFIX:tag)
             if ($attr =~ /(.*?):/) {
                 if ($1 eq 'xmlns') {
@@ -3771,6 +3809,8 @@ sub ParseXMPElement($$$;$$$$)
                         if ($stdNS) {
                             $val = $try;
                             $et->WarnOnce("Fixed incorrect URI for xmlns:$ns", 1);
+                        } elsif ($val =~ m(^http://ns.nikon.com/BASIC_PARAM)) {
+                            $et->OverrideFileType('NXD','application/x-nikon-nxd');
                         } else {
                             # look for same namespace with different version number
                             $try = quotemeta $val; # (note: escapes slashes too)
@@ -4158,7 +4198,18 @@ sub ProcessXMP($$;$)
         $dataLen = $$dirInfo{DataLen} || length($$dataPt);
         # check leading BOM (may indicate double-encoded UTF)
         pos($$dataPt) = $dirStart;
-        $double = $1 if $$dataPt =~ /\G((\0\0)?\xfe\xff|\xff\xfe(\0\0)?|\xef\xbb\xbf)\0*<\0*\?\0*x\0*p\0*a\0*c\0*k\0*e\0*t/g;
+        if ($$dataPt =~ /\G((\0\0)?\xfe\xff|\xff\xfe(\0\0)?|\xef\xbb\xbf)\0*<\0*\?\0*x\0*p\0*a\0*c\0*k\0*e\0*t/g) {
+            $double = $1 
+        } else {
+            # handle UTF-16/32 XML
+            pos($$dataPt) = $dirStart;
+            if ($$dataPt =~ /\G((\0\0)?\xfe\xff|\xff\xfe(\0\0)?|\xef\xbb\xbf)\0*<\0*\?\0*x\0*m\0*l\0* /g) {
+                my $tmp = $1;
+                $fmt = $tmp =~ /\xfe\xff/ ? 'n' : 'v';
+                $fmt = uc($fmt) if $tmp =~ /\0\0/;
+                $isXML = 1;
+            }
+        }
     } else {
         my ($type, $mime, $buf2, $buf3);
         # read information from XMP file
@@ -4516,7 +4567,7 @@ information.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

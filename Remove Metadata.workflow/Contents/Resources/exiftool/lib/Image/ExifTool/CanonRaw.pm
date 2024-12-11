@@ -562,7 +562,7 @@ sub BuildMakerNotes($$$$$$);
     3 => {
         Name => 'Rotation',
         Format => 'int32s',
-        Writable => 'int32s',
+        Writable => 1,
     },
     4 => 'ComponentBitDepth', #3
     5 => 'ColorBitDepth', #3
@@ -888,7 +888,7 @@ tags.)
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

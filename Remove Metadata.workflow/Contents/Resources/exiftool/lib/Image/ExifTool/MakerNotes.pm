@@ -21,7 +21,7 @@ sub ProcessKodakPatch($$$);
 sub WriteUnknownOrPreview($$$);
 sub FixLeicaBase($$;$);
 
-$VERSION = '2.15';
+$VERSION = '2.16';
 
 my $debug;          # set to 1 to enable debugging code
 
@@ -195,7 +195,7 @@ my $debug;          # set to 1 to enable debugging code
     },
     {
         Name => 'MakerNoteHP4', # PhotoSmart M627
-        Condition => '$$valPt =~ /^IIII\x04\0/',
+        Condition => '$$valPt =~ /^IIII[\x04|\x05]\0/',
         NotIFD => 1,
         SubDirectory => {
             TagTable => 'Image::ExifTool::HP::Type4',
@@ -1831,7 +1831,7 @@ maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

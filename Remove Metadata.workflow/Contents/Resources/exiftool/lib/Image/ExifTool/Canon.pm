@@ -88,7 +88,7 @@ sub ProcessCTMD($$$);
 sub ProcessExifInfo($$$);
 sub SwapWords($);
 
-$VERSION = '4.71';
+$VERSION = '4.82';
 
 # Note: Removed 'USM' from 'L' lenses since it is redundant - PH
 # (or is it?  Ref 32 shows 5 non-USM L-type lenses)
@@ -203,7 +203,8 @@ $VERSION = '4.71';
     52 => 'Canon EF-S 18-55mm f/3.5-5.6 IS II', #PH
     53 => 'Canon EF-S 18-55mm f/3.5-5.6 III', #Jon Charnas
     54 => 'Canon EF-S 55-250mm f/4-5.6 IS II', #47
-    60 => 'Irix 11mm f/4', #50
+    60 => 'Irix 11mm f/4 or 15mm f/2.4', #50
+    60.1 => 'Irix 15mm f/2.4', #forum15655
     63 => 'Irix 30mm F1.4 Dragonfly', #IB
     80 => 'Canon TS-E 50mm f/2.8L Macro', #42
     81 => 'Canon TS-E 90mm f/2.8L Macro', #42
@@ -627,7 +628,9 @@ $VERSION = '4.71';
    '61182.51' => 'Canon RF 100-300mm F2.8L IS USM + RF2x', #42
    '61182.52' => 'Canon RF 10-20mm F4 L IS STM', #42
    '61182.53' => 'Canon RF 28mm F2.8 STM', #42
-    # we need the RFLensType values for the following...
+   '61182.54' => 'Canon RF 24-105mm F2.8 L IS USM Z', #42
+   '61182.55' => 'Canon RF-S 10-18mm F4.5-6.3 IS STM', #42
+   '61182.56' => 'Canon RF 35mm F1.4 L VCM', #42
     65535 => 'n/a',
 );
 
@@ -992,6 +995,8 @@ $VERSION = '4.71';
     0x80000481 => 'EOS R6 Mark II', #42
     0x80000487 => 'EOS R8', #42
     0x80000491 => 'PowerShot V10', #25
+    0x80000495 => 'EOS R1', #PH
+    0x80000496 => 'R5 Mark II', #forum16406
     0x80000498 => 'EOS R100', #25
     0x80000520 => 'EOS D2000C', #IB
     0x80000560 => 'EOS D6000C', #PH (guess)
@@ -1393,7 +1398,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         },
         {
             Name => 'CanonCameraInfoR6',
-            Condition => '$$self{Model} =~ /\bEOS R6$/',
+            Condition => '$$self{Model} =~ /\bEOS R[56]$/',
             SubDirectory => { TagTable => 'Image::ExifTool::Canon::CameraInfoR6' },
         },
         {
@@ -1975,6 +1980,11 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             Name => 'ColorData11',
             SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorData11' },
         },
+        {   # (int16u[4528]) - R1/R5mkII ref forum16406
+            Condition => '$count == 4528',
+            Name => 'ColorData12',
+            SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorData12' },
+        },
         {
             Name => 'ColorDataUnknown',
             SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorDataUnknown' },
@@ -2126,6 +2136,13 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             TagTable => 'Image::ExifTool::Canon::RawBurstInfo',
         }
     },
+    0x4059 => { #forum16111
+        Name => 'LevelInfo',
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::LevelInfo',
+        }
+    },
 );
 
 #..............................................................................
@@ -2205,8 +2222,9 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             6 => 'Manual Focus (6)',
            16 => 'Pan Focus', #PH
            # 137 - Single?
-           256 => 'AF + MF', #PH (NC, EOS M)
-           257 => 'Live View', #forum12082
+           256 => 'One-shot AF (Live View)', #PH/forum15637
+           257 => 'AI Servo AF (Live View)', #PH/forum15637
+           258 => 'AI Focus AF (Live View)', #PH/forum15637
            512 => 'Movie Snap Focus', #48
            519 => 'Movie Servo AF', #PH (NC, EOS M)
         },
@@ -2587,6 +2605,14 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
     # 47 - related to aspect ratio: 100=4:3,70=1:1/16:9,90=3:2,60=4:5 (PH G12)
     #      (roughly image area in percent - 4:3=100%,1:1/16:9=75%,3:2=89%,4:5=60%)
+    # 48 - 3 for CR2/CR3, 4 or 7 for JPG, -1 for edited JPG (see forum16127)
+    51 => { #forum16036 (EOS R models)
+        Name => 'Clarity',
+        PrintConv => {
+            OTHER => sub { shift },
+            0x7fff => 'n/a',
+        },
+    },
 );
 
 # focal length information (MakerNotes tag 0x02)
@@ -4712,12 +4738,15 @@ my %ciMaxFocal = (
     FIRST_ENTRY => 0,
     PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    NOTES => 'CameraInfo tags for the EOS R6.',
-    0x0af1 => { #forum15210
+    NOTES => 'CameraInfo tags for the EOS R5 and R6.',
+    # (see forum16111 for more notes on these tags)
+    # 0x0a5d - some sort of sequence number starting from 1 (ref forum16111)
+    0x0af1 => { #forum15210/15579
         Name => 'ShutterCount',
         Format => 'int32u',
         Notes => 'includes electronic + mechanical shutter',
     },
+    # 0x0bb7 - counts down during focus stack (ref forum16111)
 );
 
 # ref https://exiftool.org/forum/index.php?topic=15356.0
@@ -4726,9 +4755,10 @@ my %ciMaxFocal = (
     FIRST_ENTRY => 0,
     PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    NOTES => 'CameraInfo tags for the EOS R6.',
+    NOTES => 'CameraInfo tags for the PowerShot G5 X Mark II.',
     0x0293 => {
         Name => 'ShutterCount',
+        Condition => '$$self{FileType} eq "JPEG"',
         Format => 'int32u',
         Notes => 'includes electronic + mechanical shutter',
         # - advances by 1 for each photo file, regardless of mechanical or electronic shutter
@@ -4736,26 +4766,27 @@ my %ciMaxFocal = (
         # - advances for time lapse video files
         # - creating a new directory or resetting the counter from the menu doesn't affect this shutter count
     },
+    0x0a95 => {
+        Name => 'ShutterCount',
+        Condition => '$$self{FileType} eq "CR3"',
+        Format => 'int32u',
+        Notes => 'includes electronic + mechanical shutter',
+    },
     0x0b21 => {
         Name => 'DirectoryIndex',
+        Condition => '$$self{FileType} eq "JPEG"',
         Groups => { 2 => 'Image' },
         Format => 'int32u',
     },
     0x0b2d => {
         Name => 'FileIndex',
+        Condition => '$$self{FileType} eq "JPEG"',
         Format => 'int32u',
         Groups => { 2 => 'Image' },
         Format => 'int32u',
         ValueConv => '$val + 1',
         ValueConvInv => '$val - 1',
     },
-    #0x0b39 => {
-    #    Name => 'DirectoryIndex',
-    #    Groups => { 2 => 'Image' },
-    #    Format => 'int32u',
-    #    ValueConv => '$val - 1',
-    #    ValueConvInv => '$val + 1',
-    #},
 );
 
 # Canon camera information for 70D (MakerNotes tag 0x0d) (ref PH)
@@ -6377,8 +6408,14 @@ my %ciMaxFocal = (
             10 => 'AF Point Expansion (8 point)', #forum6237
             11 => 'Flexizone Multi (49 point)', #PH (NC, EOS M, live view; 750D 49 points)
             12 => 'Flexizone Multi (9 point)', #PH (750D, 9 points)
-            13 => 'Flexizone Single', #PH (EOS M default, live view)
+            13 => 'Flexizone Single', #PH (EOS M default, live view) (R7 calls this '1-point AF', ref github268)
             14 => 'Large Zone AF', #PH/forum6237 (7DmkII)
+            16 => 'Large Zone AF (vertical)', #forum16223
+            17 => 'Large Zone AF (horizontal)', #forum16223
+            19 => 'Flexible Zone AF 1', #github268 (R7)
+            20 => 'Flexible Zone AF 2', #github268 (R7)
+            21 => 'Flexible Zone AF 3', #github268 (R7)
+            22 => 'Whole Area AF', #github268 (R7)
         },
     },
     2 => {
@@ -6893,6 +6930,10 @@ my %ciMaxFocal = (
         Name => 'FlashExposureLock',
         PrintConv => \%offOn,
     },
+    32 => { #forum16257
+        Name => 'AntiFlicker',
+        PrintConv => \%offOn,
+    },
     0x3d => { #IB
         Name => 'RFLensType',
         Format => 'int16u',
@@ -6950,8 +6991,16 @@ my %ciMaxFocal = (
             306 => 'Canon RF 100-300mm F2.8L IS USM', #42
             307 => 'Canon RF 100-300mm F2.8L IS USM + RF1.4x', #42
             308 => 'Canon RF 100-300mm F2.8L IS USM + RF2x', #42
+            309 => 'Canon RF 200-800mm F6.3-9 IS USM', #42
+            310 => 'Canon RF 200-800mm F6.3-9 IS USM + RF1.4x', #42
+            311 => 'Canon RF 200-800mm F6.3-9 IS USM + RF2x', #42
             312 => 'Canon RF 10-20mm F4 L IS STM', #42
             313 => 'Canon RF 28mm F2.8 STM', #42
+            314 => 'Canon RF 24-105mm F2.8 L IS USM Z', #42
+            315 => 'Canon RF-S 10-18mm F4.5-6.3 IS STM', #42
+            316 => 'Canon RF 35mm F1.4 L VCM', #42
+            317 => 'Canon RF-S 3.9mm F3.5 STM DUAL FISHEYE', #42
+            318 => 'Canon RF 28-70mm F2.8 IS STM', #42
             # Note: add new RF lenses to %canonLensTypes with ID 61182
         },
     },
@@ -7021,7 +7070,7 @@ my %ciMaxFocal = (
         },
     },
     2 => { #12
-        Name => 'Sharpness',
+        Name => 'Sharpness', # (unsharp mask strength for the EOS R5)
         Notes => 'all models except the 20D and 350D',
         Condition => '$$self{Model} !~ /\b(20D|350D|REBEL XT|Kiss Digital N)\b/',
         Priority => 0,  # (maybe not as reliable as other sharpness values)
@@ -7067,6 +7116,8 @@ my %ciMaxFocal = (
         Name => 'WBShiftGM',
         Notes => 'positive is a shift toward green',
     },
+    14 => 'UnsharpMaskFineness', #forum16036
+    15 => 'UnsharpMaskThreshold', #forum16036
 );
 
 # Color balance information (MakerNotes tag 0xa9) (ref PH)
@@ -7468,7 +7519,7 @@ my %ciMaxFocal = (
         RawConv => '$$self{ColorDataVersion} = $val',
         PrintConv => {
             2 => '2 (1DmkIII)',
-            3 => '3 (40D)',
+            3 => '3 (40D)', # (doesn't record SpecularWhiteLevel, ref github#233)
             4 => '4 (1DSmkIII)',
             5 => '5 (450D/1000D)',
             6 => '6 (50D/5DmkII)',
@@ -7778,9 +7829,14 @@ my %ciMaxFocal = (
         SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib2' }
     },
     0x108=> { #IB
-        Name => 'PerChannelBlackLevel',
+        Name => 'PerChannelBlackLevel', # (or perhaps AverageBlackLevel?, ref github#232)
         Condition => '$$self{ColorDataVersion} == -3',
         Format => 'int16s[4]',
+    },
+    0x296 => { #github#232
+        Name => 'SpecularWhiteLevel',
+        Condition => '$$self{ColorDataVersion} == -3',
+        Format => 'int16u',
     },
     0x14d=> { #IB
         Name => 'PerChannelBlackLevel',
@@ -8566,6 +8622,126 @@ my %ciMaxFocal = (
     },
 );
 
+# Color data (MakerNotes tag 0x4001, count=4528, ref PH)
+%Image::ExifTool::Canon::ColorData12 = (
+    %binaryDataAttrs,
+    NOTES => 'These tags are used by the EOS R1 and R5mkII',
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    DATAMEMBER => [ 0 ],
+    IS_SUBDIR => [ 0x140 ],
+    0x00 => {
+        Name => 'ColorDataVersion',
+        DataMember => 'ColorDataVersion',
+        RawConv => '$$self{ColorDataVersion} = $val',
+        PrintConv => {
+            64 => '64 (R1, R5 Mark II)',
+        },
+    },
+    0x69 => { Name => 'WB_RGGBLevelsAsShot',    Format => 'int16s[4]' }, # (NC)
+    0x6d => 'ColorTempAsShot', # (NC)
+    0x6e => { Name => 'WB_RGGBLevelsDaylight',  Format => 'int16s[4]' },
+    0x72 => 'ColorTempDaylight',
+    0x73 => { Name => 'WB_RGGBLevelsShade',     Format => 'int16s[4]' },
+    0x77 => 'ColorTempShade',
+    0x78 => { Name => 'WB_RGGBLevelsCloudy',    Format => 'int16s[4]' },
+    0x7c => 'ColorTempCloudy',
+    0x7d => { Name => 'WB_RGGBLevelsTungsten',  Format => 'int16s[4]' },
+    0x81 => 'ColorTempTungsten',
+    0x82 => { Name => 'WB_RGGBLevelsFluorescent',Format=> 'int16s[4]' },
+    0x86 => 'ColorTempFluorescent' ,
+    0x87 => { Name => 'WB_RGGBLevelsFlash',     Format => 'int16s[4]' },
+    0x8b => 'ColorTempFlash',
+    0x8c => { Name => 'WB_RGGBLevelsUnknown2',  Format => 'int16s[4]', Unknown => 1 },
+    0x90 => { Name => 'ColorTempUnknown2', Unknown => 1 },
+    0x91 => { Name => 'WB_RGGBLevelsUnknown3',  Format => 'int16s[4]', Unknown => 1 },
+    0x95 => { Name => 'ColorTempUnknown3', Unknown => 1 },
+    0x96 => { Name => 'WB_RGGBLevelsUnknown4',  Format => 'int16s[4]', Unknown => 1 },
+    0x9a => { Name => 'ColorTempUnknown4', Unknown => 1 },
+    0x9b => { Name => 'WB_RGGBLevelsUnknown5',  Format => 'int16s[4]', Unknown => 1 },
+    0x9f => { Name => 'ColorTempUnknown5', Unknown => 1 },
+    0xa0 => { Name => 'WB_RGGBLevelsUnknown6',  Format => 'int16s[4]', Unknown => 1 },
+    0xa4 => { Name => 'ColorTempUnknown6', Unknown => 1 },
+    0xa5 => { Name => 'WB_RGGBLevelsUnknown7',  Format => 'int16s[4]', Unknown => 1 },
+    0xa9 => { Name => 'ColorTempUnknown7', Unknown => 1 },
+    0xaa => { Name => 'WB_RGGBLevelsUnknown8',  Format => 'int16s[4]', Unknown => 1 },
+    0xae => { Name => 'ColorTempUnknown8', Unknown => 1 },
+    0xaf => { Name => 'WB_RGGBLevelsUnknown9',  Format => 'int16s[4]', Unknown => 1 },
+    0xb3 => { Name => 'ColorTempUnknown9', Unknown => 1 },
+    0xb4 => { Name => 'WB_RGGBLevelsUnknown10', Format => 'int16s[4]', Unknown => 1 },
+    0xb8 => { Name => 'ColorTempUnknown10', Unknown => 1 },
+    0xb9 => { Name => 'WB_RGGBLevelsUnknown11', Format => 'int16s[4]', Unknown => 1 },
+    0xbd => { Name => 'ColorTempUnknown11', Unknown => 1 },
+    0xbe => { Name => 'WB_RGGBLevelsUnknown12', Format => 'int16s[4]', Unknown => 1 },
+    0xc2 => { Name => 'ColorTempUnknown12', Unknown => 1 },
+    0xc3 => { Name => 'WB_RGGBLevelsUnknown13', Format => 'int16s[4]', Unknown => 1 },
+    0xc7 => { Name => 'ColorTempUnknown13', Unknown => 1 },
+    0xc8 => { Name => 'WB_RGGBLevelsUnknown14', Format => 'int16s[4]', Unknown => 1 },
+    0xcc => { Name => 'ColorTempUnknown14', Unknown => 1 },
+    0xcd => { Name => 'WB_RGGBLevelsUnknown15', Format => 'int16s[4]', Unknown => 1 },
+    0xd1 => { Name => 'ColorTempUnknown15', Unknown => 1 },
+    0xd2 => { Name => 'WB_RGGBLevelsUnknown16', Format => 'int16s[4]', Unknown => 1 },
+    0xd6 => { Name => 'ColorTempUnknown16', Unknown => 1 },
+    0xd7 => { Name => 'WB_RGGBLevelsUnknown17', Format => 'int16s[4]', Unknown => 1 },
+    0xdb => { Name => 'ColorTempUnknown17', Unknown => 1 },
+    0xdc => { Name => 'WB_RGGBLevelsUnknown18', Format => 'int16s[4]', Unknown => 1 },
+    0xe0 => { Name => 'ColorTempUnknown18', Unknown => 1 },
+    0xe1 => { Name => 'WB_RGGBLevelsUnknown19', Format => 'int16s[4]', Unknown => 1 },
+    0xe5 => { Name => 'ColorTempUnknown19', Unknown => 1 },
+    0xe6 => { Name => 'WB_RGGBLevelsUnknown20', Format => 'int16s[4]', Unknown => 1 },
+    0xea => { Name => 'ColorTempUnknown20', Unknown => 1 },
+    0xeb => { Name => 'WB_RGGBLevelsUnknown21', Format => 'int16s[4]', Unknown => 1 },
+    0xef => { Name => 'ColorTempUnknown21', Unknown => 1 },
+    0xf0 => { Name => 'WB_RGGBLevelsUnknown22', Format => 'int16s[4]', Unknown => 1 },
+    0xf4 => { Name => 'ColorTempUnknown22', Unknown => 1 },
+    0xf5 => { Name => 'WB_RGGBLevelsUnknown23', Format => 'int16s[4]', Unknown => 1 },
+    0xf9 => { Name => 'ColorTempUnknown23', Unknown => 1 },
+    0xfa => { Name => 'WB_RGGBLevelsUnknown24', Format => 'int16s[4]', Unknown => 1 },
+    0xfe => { Name => 'ColorTempUnknown24', Unknown => 1 },
+    0xff => { Name => 'WB_RGGBLevelsUnknown25', Format => 'int16s[4]', Unknown => 1 },
+    0x103 => { Name => 'ColorTempUnknown25', Unknown => 1 },
+    0x104 => { Name => 'WB_RGGBLevelsUnknown26',Format => 'int16s[4]', Unknown => 1 },
+    0x108 => { Name => 'ColorTempUnknown26', Unknown => 1 },
+    0x109 => { Name => 'WB_RGGBLevelsUnknown27',Format => 'int16s[4]', Unknown => 1 },
+    0x10d => { Name => 'ColorTempUnknown27', Unknown => 1 },
+    0x10e => { Name => 'WB_RGGBLevelsUnknown28',Format => 'int16s[4]', Unknown => 1 },
+    0x112 => { Name => 'ColorTempUnknown28', Unknown => 1 },
+    0x113 => { Name => 'WB_RGGBLevelsUnknown29',Format => 'int16s[4]', Unknown => 1 },
+    0x117 => { Name => 'ColorTempUnknown29', Unknown => 1 },
+    0x118 => { Name => 'WB_RGGBLevelsUnknown30',Format => 'int16s[4]', Unknown => 1 },
+    0x11c => { Name => 'ColorTempUnknown30', Unknown => 1 },
+    0x11d => { Name => 'WB_RGGBLevelsUnknown31',Format => 'int16s[4]', Unknown => 1 },
+    0x121 => { Name => 'ColorTempUnknown31', Unknown => 1 },
+    0x122 => { Name => 'WB_RGGBLevelsUnknown32',Format => 'int16s[4]', Unknown => 1 },
+    0x126 => { Name => 'ColorTempUnknown32', Unknown => 1 },
+    0x127 => { Name => 'WB_RGGBLevelsUnknown33',Format => 'int16s[4]', Unknown => 1 },
+    0x12b => { Name => 'ColorTempUnknown33', Unknown => 1 },
+    0x140 => {
+        Name => 'ColorCalib',
+        Format => 'undef[120]',
+        Unknown => 1,
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib' }
+    },
+    0x17f => {
+        Name => 'PerChannelBlackLevel',
+        Format => 'int16u[4]',
+    },
+    0x294 => {
+        Name => 'NormalWhiteLevel',
+        Format => 'int16u',
+        RawConv => '$val || undef',
+    },
+    0x295 => {
+        Name => 'SpecularWhiteLevel',
+        Format => 'int16u',
+    },
+    0x296 => {
+        Name => 'LinearityUpperMargin',
+        Format => 'int16u',
+    },
+);
+
 # Unknown color data (MakerNotes tag 0x4001)
 %Image::ExifTool::Canon::ColorDataUnknown = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
@@ -8696,7 +8872,7 @@ my %ciMaxFocal = (
     },
 );
 
-# Auto Lighting Optimizater information (MakerNotes tag 0x4018) (ref PH)
+# Auto Lighting Optimizer information (MakerNotes tag 0x4018) (ref PH)
 %Image::ExifTool::Canon::LightingOpt = (
     %binaryDataAttrs,
     FORMAT => 'int32s',
@@ -8744,9 +8920,13 @@ my %ciMaxFocal = (
         Name => 'DigitalLensOptimizer',
         PrintConv => {
             0 => 'Off',
-            1 => 'Stanard',
+            1 => 'Standard',
             2 => 'High',
         },
+    },
+    11 => { #forum15445
+        Name => 'DualPixelRaw',
+        PrintConv => \%offOn,
     },
 );
 
@@ -8973,20 +9153,32 @@ my %filterConv = (
              4 => 'Focus High Priority',
         },
     },
-    7 => { #52
+    7 => [{ #forum16068
         Name => 'USMLensElectronicMF',
+        Condition => '$$self{Model} =~ /EOS R\d/',
+        Notes => 'EOS R models',
+        PrintConv => {
+             0 => 'Disable After One-Shot',
+             1 => 'One-Shot -> Enabled',
+             2 => 'One-Shot -> Enabled (magnify)',
+             3 => 'Disable in AF Mode',
+        },
+    },{ #52
+        Name => 'USMLensElectronicMF',
+        Notes => 'Other models',
         PrintConv => {
              0 => 'Enable After AF',
              1 => 'Disable After AF',
              2 => 'Disable in AF Mode',
         },
-    },
+    }],
     8 => { #52
         Name => 'AFAssistBeam',
         PrintConv => {
              0 => 'Enable',
              1 => 'Disable',
              2 => 'IR AF Assist Beam Only',
+             3 => 'LED AF Assist Beam Only', #forum16068
         },
     },
     9 => { #52
@@ -9066,24 +9258,37 @@ my %filterConv = (
              2 => 'Disable',
         },
     },
-    18 => { #52
+    18 => { #52/forum16223
         Name => 'AFStatusViewfinder',
-        Condition => '$$self{Model} =~ /1D X/',
-        Notes => '1D X only',
+        Condition => '$$self{Model} =~ /EOS-1D X|EOS R/',
+        Notes => '1D X and R models',
         PrintConv => {
              0 => 'Show in Field of View',
              1 => 'Show Outside View',
         },
     },
-    19 => { #52
+    19 => { #52/forum16223
         Name => 'InitialAFPointInServo',
-        Condition => '$$self{Model} =~ /1D X/',
-        Notes => '1D X only',
+        Condition => '$$self{Model} =~ /EOS-1D X|EOS R/',
+        Notes => '1D X and R models',
         PrintConv => {
              0 => 'Initial AF Point Selected',
              1 => 'Manual AF Point',
              2 => 'Auto', #PH (1DXmkII)
         },
+    },
+    20 => { #forum16068
+        Name => 'SubjectToDetect',
+        PrintConv => {
+            0 => 'None',
+            1 => 'People',
+            2 => 'Animals',
+            3 => 'Vehicles',
+        },
+    },
+    24 => { #forum16068
+        Name => 'EyeDetection',
+        PrintConv => \%offOn,
     },
 );
 
@@ -9095,6 +9300,53 @@ my %filterConv = (
     FIRST_ENTRY => 1,
     1 => 'RawBurstImageNum',
     2 => 'RawBurstImageCount',
+);
+
+# level information (ref forum16111, EOS R5)
+%Image::ExifTool::Canon::LevelInfo = (
+    %binaryDataAttrs,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    FORMAT => 'int32s',
+    FIRST_ENTRY => 1,
+    4 => {
+        Name => 'RollAngle',
+        Notes => 'converted to degrees of clockwise camera rotation',
+        ValueConv => '$val > 1800 and $val -= 3600; -$val / 10',
+        ValueConvInv => '$val > 0 and $val -= 360; int(-$val * 10 + 0.5)',
+    },
+    5 => {
+        Name => 'PitchAngle',
+        Notes => 'converted to degrees of upward camera tilt',
+        ValueConv => '$val > 1800 and $val -= 3600; $val / 10',
+        ValueConvInv => '$val < 0 and $val += 360; int($val * 10 + 0.5)',
+    },
+    7 => {
+        Name => 'FocalLength',
+        ValueConv => '$val / 10',
+        ValueConvInv => 'int($val * 10 + 0.5)',
+        PrintConv => '"$val mm"',
+        PrintConvInv => '$val=~s/\s*mm//;$val',
+    },
+    8 => {
+        Name => 'MinFocalLength2',
+        Notes => q{
+            these seem to be min/max focal length without teleconverter, as opposed to
+            MinFocalLength and MaxFocalLength which include the effect of a
+            teleconverter
+        }, #forum16309
+        ValueConv => '$val / 10',
+        ValueConvInv => 'int($val * 10 + 0.5)',
+        PrintConv => '"$val mm"',
+        PrintConvInv => '$val=~s/\s*mm//;$val',
+    },
+    9 => {
+        Name => 'MaxFocalLength2',
+        ValueConv => '$val / 10',
+        ValueConvInv => 'int($val * 10 + 0.5)',
+        PrintConv => '"$val mm"',
+        PrintConvInv => '$val=~s/\s*mm//;$val',
+    },
+
 );
 
 # Canon UUID atoms (ref PH, SX280)
@@ -10306,7 +10558,7 @@ Canon maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

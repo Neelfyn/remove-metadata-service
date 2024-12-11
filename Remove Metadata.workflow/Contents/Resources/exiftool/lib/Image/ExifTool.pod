@@ -5,7 +5,7 @@
 #
 # URL:          https://exiftool.org/
 #
-# Legal:        Copyright (c) 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+# Legal:        Copyright (c) 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 #               This library is free software; you can redistribute it and/or
 #               modify it under the same terms as Perl itself.
 #------------------------------------------------------------------------------
@@ -65,49 +65,50 @@ supported by ExifTool (r = read, w = write, c = create):
 
   File Types
   ------------+-------------+-------------+-------------+------------
-  360   r/w   | DPX   r     | ITC   r     | NUMBERS r   | RAW   r/w
-  3FR   r     | DR4   r/w/c | J2C   r     | O     r     | RIFF  r
-  3G2   r/w   | DSS   r     | JNG   r/w   | ODP   r     | RSRC  r
-  3GP   r/w   | DV    r     | JP2   r/w   | ODS   r     | RTF   r
-  7Z    r     | DVB   r/w   | JPEG  r/w   | ODT   r     | RW2   r/w
-  A     r     | DVR-MS r    | JSON  r     | OFR   r     | RWL   r/w
-  AA    r     | DYLIB r     | JXL   r     | OGG   r     | RWZ   r
-  AAE   r     | EIP   r     | K25   r     | OGV   r     | RM    r
-  AAX   r/w   | EPS   r/w   | KDC   r     | ONP   r     | SEQ   r
-  ACR   r     | EPUB  r     | KEY   r     | OPUS  r     | SKETCH r
-  AFM   r     | ERF   r/w   | LA    r     | ORF   r/w   | SO    r
-  AI    r/w   | EXE   r     | LFP   r     | ORI   r/w   | SR2   r/w
-  AIFF  r     | EXIF  r/w/c | LIF   r     | OTF   r     | SRF   r
-  APE   r     | EXR   r     | LNK   r     | PAC   r     | SRW   r/w
-  ARQ   r/w   | EXV   r/w/c | LRV   r/w   | PAGES r     | SVG   r
-  ARW   r/w   | F4A/V r/w   | M2TS  r     | PBM   r/w   | SWF   r
-  ASF   r     | FFF   r/w   | M4A/V r/w   | PCD   r     | THM   r/w
-  AVI   r     | FITS  r     | MACOS r     | PCX   r     | TIFF  r/w
-  AVIF  r/w   | FLA   r     | MAX   r     | PDB   r     | TORRENT r
-  AZW   r     | FLAC  r     | MEF   r/w   | PDF   r/w   | TTC   r
-  BMP   r     | FLIF  r/w   | MIE   r/w/c | PEF   r/w   | TTF   r
-  BPG   r     | FLV   r     | MIFF  r     | PFA   r     | TXT   r
-  BTF   r     | FPF   r     | MKA   r     | PFB   r     | VCF   r
-  CHM   r     | FPX   r     | MKS   r     | PFM   r     | VNT   r
-  COS   r     | GIF   r/w   | MKV   r     | PGF   r     | VRD   r/w/c
-  CR2   r/w   | GLV   r/w   | MNG   r/w   | PGM   r/w   | VSD   r
-  CR3   r/w   | GPR   r/w   | MOBI  r     | PLIST r     | WAV   r
-  CRM   r/w   | GZ    r     | MODD  r     | PICT  r     | WDP   r/w
-  CRW   r/w   | HDP   r/w   | MOI   r     | PMP   r     | WEBP  r/w
-  CS1   r/w   | HDR   r     | MOS   r/w   | PNG   r/w   | WEBM  r
-  CSV   r     | HEIC  r/w   | MOV   r/w   | PPM   r/w   | WMA   r
-  CUR   r     | HEIF  r/w   | MP3   r     | PPT   r     | WMV   r
-  CZI   r     | HTML  r     | MP4   r/w   | PPTX  r     | WPG   r
-  DCM   r     | ICC   r/w/c | MPC   r     | PS    r/w   | WTV   r
-  DCP   r/w   | ICO   r     | MPG   r     | PSB   r/w   | WV    r
-  DCR   r     | ICS   r     | MPO   r/w   | PSD   r/w   | X3F   r/w
-  DFONT r     | IDML  r     | MQV   r/w   | PSP   r     | XCF   r
-  DIVX  r     | IIQ   r/w   | MRC   r     | QTIF  r/w   | XISF  r
-  DJVU  r     | IND   r/w   | MRW   r/w   | R3D   r     | XLS   r
-  DLL   r     | INSP  r/w   | MXF   r     | RA    r     | XLSX  r
-  DNG   r/w   | INSV  r     | NEF   r/w   | RAF   r/w   | XMP   r/w/c
-  DOC   r     | INX   r     | NKSC  r/w   | RAM   r     | ZIP   r
-  DOCX  r     | ISO   r     | NRW   r/w   | RAR   r     |
+  360   r/w   | DOCX  r     | ITC   r     | NUMBERS r   | RAW   r/w
+  3FR   r     | DPX   r     | J2C   r     | NXD   r     | RIFF  r
+  3G2   r/w   | DR4   r/w/c | JNG   r/w   | O     r     | RSRC  r
+  3GP   r/w   | DSS   r     | JP2   r/w   | ODP   r     | RTF   r
+  7Z    r     | DV    r     | JPEG  r/w   | ODS   r     | RW2   r/w
+  A     r     | DVB   r/w   | JSON  r     | ODT   r     | RWL   r/w
+  AA    r     | DVR-MS r    | JXL   r/w   | OFR   r     | RWZ   r
+  AAC   r     | DYLIB r     | K25   r     | OGG   r     | RM    r
+  AAE   r     | EIP   r     | KDC   r     | OGV   r     | SEQ   r
+  AAX   r/w   | EPS   r/w   | KEY   r     | ONP   r     | SKETCH r
+  ACR   r     | EPUB  r     | LA    r     | OPUS  r     | SO    r
+  AFM   r     | ERF   r/w   | LFP   r     | ORF   r/w   | SR2   r/w
+  AI    r/w   | EXE   r     | LIF   r     | ORI   r/w   | SRF   r
+  AIFF  r     | EXIF  r/w/c | LNK   r     | OTF   r     | SRW   r/w
+  APE   r     | EXR   r     | LRV   r/w   | PAC   r     | SVG   r
+  ARQ   r/w   | EXV   r/w/c | M2TS  r     | PAGES r     | SWF   r
+  ARW   r/w   | F4A/V r/w   | M4A/V r/w   | PBM   r/w   | THM   r/w
+  ASF   r     | FFF   r/w   | MACOS r     | PCD   r     | TIFF  r/w
+  AVI   r     | FITS  r     | MAX   r     | PCX   r     | TORRENT r
+  AVIF  r/w   | FLA   r     | MEF   r/w   | PDB   r     | TTC   r
+  AZW   r     | FLAC  r     | MIE   r/w/c | PDF   r/w   | TTF   r
+  BMP   r     | FLIF  r/w   | MIFF  r     | PEF   r/w   | TXT   r
+  BPG   r     | FLV   r     | MKA   r     | PFA   r     | VCF   r
+  BTF   r     | FPF   r     | MKS   r     | PFB   r     | VNT   r
+  C2PA  r     | FPX   r     | MKV   r     | PFM   r     | VRD   r/w/c
+  CHM   r     | GIF   r/w   | MNG   r/w   | PGF   r     | VSD   r
+  COS   r     | GLV   r/w   | MOBI  r     | PGM   r/w   | WAV   r
+  CR2   r/w   | GPR   r/w   | MODD  r     | PLIST r     | WDP   r/w
+  CR3   r/w   | GZ    r     | MOI   r     | PICT  r     | WEBP  r/w
+  CRM   r/w   | HDP   r/w   | MOS   r/w   | PMP   r     | WEBM  r
+  CRW   r/w   | HDR   r     | MOV   r/w   | PNG   r/w   | WMA   r
+  CS1   r/w   | HEIC  r/w   | MP3   r     | PPM   r/w   | WMV   r
+  CSV   r     | HEIF  r/w   | MP4   r/w   | PPT   r     | WPG   r
+  CUR   r     | HTML  r     | MPC   r     | PPTX  r     | WTV   r
+  CZI   r     | ICC   r/w/c | MPG   r     | PS    r/w   | WV    r
+  DCM   r     | ICO   r     | MPO   r/w   | PSB   r/w   | X3F   r/w
+  DCP   r/w   | ICS   r     | MQV   r/w   | PSD   r/w   | XCF   r
+  DCR   r     | IDML  r     | MRC   r     | PSP   r     | XISF  r
+  DFONT r     | IIQ   r/w   | MRW   r/w   | QTIF  r/w   | XLS   r
+  DIVX  r     | IND   r/w   | MXF   r     | R3D   r     | XLSX  r
+  DJVU  r     | INSP  r/w   | NEF   r/w   | RA    r     | XMP   r/w/c
+  DLL   r     | INSV  r     | NKA   r     | RAF   r/w   | ZIP   r
+  DNG   r/w   | INX   r     | NKSC  r/w   | RAM   r     |
+  DOC   r     | ISO   r     | NRW   r/w   | RAR   r     |
 
   Meta Information
   ----------------------+----------------------+---------------------
@@ -331,13 +332,14 @@ L</ImageInfo>:
 
 Values of the returned hash are usually simple scalars, but a scalar
 reference is used to indicate binary data and an array reference may be used
-to indicate a list.  Also, a hash reference may be returned if the L</Struct>
-option is used.  Lists of values are joined by commas into a single
-string only if the PrintConv option is enabled and the ListJoin option is
-enabled (which are the defaults).  Note that binary values are not
-necessarily extracted unless specifically requested, or the Binary option is
-enabled and the tag is not specifically excluded.  If not extracted the
-value is a reference to a string of the form "Binary data ##### bytes".
+to indicate a list.  Also, a hash reference may be returned if the
+L</Struct> option is used (see the L</OrderedKeys> option to obtain the hash
+keys).  Lists of values are joined by commas into a single string only if
+the PrintConv option is enabled and the ListJoin option is enabled (which
+are the defaults).  Note that binary values are not necessarily extracted
+unless specifically requested, or the Binary option is enabled and the tag
+is not specifically excluded.  If not extracted the value is a reference to
+a string of the form "Binary data ##### bytes".
 
 The code below gives an example of how to handle these return values, as
 well as illustrating the use of other ExifTool functions:
@@ -582,7 +584,7 @@ Flag to generate Composite tags when extracting information.  Default is 1.
 
 Flag to write new values in compressed format if possible.  Has no effect
 unless the relevant compression library is available.  Valid when writing
-metadata to PNG, JXL or MIE images.  Setting this to zero causes JXL
+metadata to PNG, JXL, HEIC or MIE images.  Setting this to zero causes JXL
 metadata to be rewritten as uncompressed when edited.  Default is undef.
 
 =item CoordFormat
@@ -591,9 +593,10 @@ Format for printing GPS coordinates.  This is a printf format string with
 specifiers for degrees, minutes and seconds in that order, however minutes
 and seconds may be omitted.  If the hemisphere is known, a reference
 direction (N, S, E or W) is appended to each printed coordinate, but adding
-a C<+> to the first format specifier (eg. C<%+.6f>) prints a signed
-coordinate instead.  For example, the following table gives the output for
-the same coordinate using various formats:
+a C<+> or C<-> to the first format specifier (eg. C<%+.6f> or C<%-.6f>)
+prints a signed coordinate instead (C<+> also adds a leading plus sign to
+positive coordinates, while C<-> does not).  For example, the following
+table gives the output for the same coordinate using various formats:
 
       CoordFormat        Example Output
   -------------------  ------------------
@@ -619,7 +622,8 @@ DateFormat of "%Y:%m:%d %H:%M:%S").
 =item Duplicates
 
 Flag to return values from tags with duplicate names when extracting
-information.  Default is 1.
+information.  Default is 1.  Forced to 1 when copying tags with
+L</SetNewValuesFromFile>.
 
 =item Escape
 
@@ -712,6 +716,54 @@ value to be added to the maker notes base offset.  It may also be set to the
 empty string ('') for ExifTool will take its best guess at the correct base,
 or undef (the default) for no base adjustment.
 
+=item GeoDir
+
+[Not a real option] Provided as a convenience to allow
+$Image::ExifTool::geoDir to be set at runtime.  This variable specifies the
+directory for the Geolocation databases, and is used only once when these
+databases are loaded.
+
+=item Geolocation
+
+Flag to generate geolocation tags based on the GPSLatitude/GPSLongitude or
+City/State/Province/Country read from a file.  This feature uses an included
+database with cities over a population of 2000 from geonames.org. May be set
+to a string of the form "Lat,Lon" (eg. "44.56,-72.33") or city with optional
+state/province, country and/or country code (eg. "Paris,France") to act as a
+default for files not containing GPS or geolocation information, or include
+tag names with leading dollar signs separated by commas to specify the tags
+to use for the geolocation input.  When "Lat,Lon" is specified, "num=##" may
+be added to return the specified number of nearby cities (the L</Duplicates>
+option must also be used for the duplicate tags to be returned).  May
+include regular expressions for more flexible matching of city names.  See
+L<https://exiftool.org/geolocation.html> for more details.  Default is
+undef.
+
+=item GeolocAltNames
+
+Flag to search alternate Geolocation city names if available (ie. if
+$Image::ExifTool::Geolocation::altDir has been set).  Set to 0 to disable
+use of the alternate names.  Default is 1.
+
+=item GeolocFeature
+
+Comma-separated list of feature codes to include in city search, or exclude
+if the list begins with a dash (-).  Valid feature codes are PPL, PPLA,
+PPLA2, PPLA3, PPLA4, PPLA5, PPLC, PPLCH, PPLF, PPLG, PPLH, PPLL, PPLQ, PPLR,
+PPLS, PPLW, PPLX, STLMT and Other, plus possible user-include codes if an
+alternate database is used.  See L<http://www.geonames.org/export/codes.html#P>
+for a description of these codes.  Default is undef.
+
+=item GeolocMaxDist
+
+Maximum distance in km to the geolocation city.  The Geolocation tags are
+not generated if the distance is greater than this.  Default is undef.
+
+=item GeolocMinPop
+
+Minimum population for the Geolocation city.  Cities smaller than this are
+ignored.  Default is undef.
+
 =item GeoMaxIntSecs
 
 Maximum interpolation time in seconds for geotagging.  Geotagging is treated
@@ -785,6 +837,12 @@ goes to the file specified by the TextOut option (\*STDOUT by default).
 Base for HTML dump offsets.  If not defined, the EXIF/TIFF base offset is
 used.  Set to 0 for absolute offsets.  Default is undef.
 
+=item IgnoreGroups
+
+Comma-separated list of group names to ignore when reading.  The group names
+are case insensitive and may be preceeded by a family number.  Set to undef
+to clear the previous IgnoreGroups list.  Default is undef.
+
 =item IgnoreMinorErrors
 
 Flag to ignore minor errors.  Causes minor errors to be downgraded to
@@ -798,12 +856,12 @@ warnings are denoted by "[minor]" at the start of the message, or "[Minor]"
 
 =item IgnoreTags
 
-List of tag names to ignore when reading.  This may help in situations where
-memory is limited because the ignored tag values are not stored in memory.
-The tag names are case insensitive and group names and wildcards are not
-allowed.  A special tag name of "All" may be used to ignore all tags except
-those specified by the L</RequestTags> option.  Set to undef to clear the
-previous IgnoreTags list.  Default is undef.
+Comma-separated list of tag names to ignore when reading.  This may help in
+situations where memory is limited because the ignored tag values are not
+stored in memory. The tag names are case insensitive and group names and
+wildcards are not allowed.  A special tag name of "All" may be used to
+ignore all tags except those specified by the L</RequestTags> option.  Set
+to undef to clear the previous IgnoreTags list.  Default is undef.
 
 =item ImageHashType
 
@@ -819,8 +877,18 @@ set to undef to select the built-in default language.  Default is 'en'.
 
 =item LargeFileSupport
 
-Flag to indicate that 64-bit file offsets are supported on this system.
-Default is undef.
+Flag to indicate that 64-bit file offsets are supported on this system. If
+not set, processing is aborted if a chunk larger than 2 GB is encountered.
+Set to 1 to process large chunks, or 2 to process with a warning.  Default
+is 2.
+
+=item LimitLongValues
+
+When extracting values for some specific tags (usually Unknown tags), the
+PrintConv values are length-limited and the value is truncated with an
+ellipsis ("[...]") if it exceeds a specified length.  This option specifies
+the length limit for these tags.  A setting of 4 or less disables the limit
+(because the ellipsis string is longer than this).  Default is 60.
 
 =item ListItem
 
@@ -873,6 +941,10 @@ writing.  This applies only to queued values, and doesn't resolve duplicates
 with existing values in the file when adding to an existing list.  Default
 is undef.
 
+=item NoMandatory
+
+Flag to bypass writing of mandatory EXIF tags.  Default is undef.
+
 =item NoMultiExif
 
 Raise error when attempting to write multi-segment EXIF in a JPEG image. 
@@ -902,6 +974,14 @@ by the value of the Charset option at processing time.  Default is undef.
 Flag to enable automatic print conversion.  Also enables inverse
 print conversion for writing.  Default is 1.
 
+=item PrintCSV
+
+Flag to directly print CSV-format output rather than extracting tags
+normally.  Currently this feature applies only to GM PDR data (see
+L<Image::ExifTool::TagNames/GM Tags>).  Setting this option automatically
+sets L</IgnoreTags> to "all", and L</ExtractEmbedded> to 1.  Default is
+undef.
+    
 =item QuickTimeHandler
 
 Flag set to add an 'mdir' Handler to a newly created Meta box when adding
@@ -952,8 +1032,7 @@ the list.  Default is undef.
 
 Flag to save EXIF/TIFF format type as the family 6 group name when
 extracting information.  Without this option set, the family 6 group names
-are not generated.  Default is undef.  See the L</GetGroup> option for more
-details.
+are not generated.  Default is undef.  See L</GetGroup> for more details.
 
 =item SavePath
 
@@ -1011,7 +1090,9 @@ values in standard format).
 
 Flag to return XMP structures as hash references instead of flattening into
 individual tags.  Has no effect when writing since both flattened and
-structured tags may always be written.  Possible values are:
+structured tags may always be written.  A special "_ordered_keys_" element
+containing a list of ordered keys may exist if the structure elements are
+ordered (see the L<OrderedKeys> method).  Possible values are:
 
   undef - (default) Same as 0 for reading, 2 for copying
     0   - Read/copy flattened tags
@@ -1027,6 +1108,10 @@ Format for serialized structures when reading/writing.
   JSON  - JSON format
   JSONQ - JSON with quoted numerical values
 
+Note that the JSONQ setting causes all values in the exiftool application
+-json output to be quoted, regardless of whether or not they are in a
+structure.
+
 =item SystemTags
 
 Flag to extract the following additional File System tags:  FileAttributes,
@@ -1040,10 +1125,12 @@ Output file reference for Verbose and HtmlDump options.  Default is
 
 =item TimeZone
 
-Time zone for local date/time values.  May be set to any valid TZ string.
-Uses the system time zone if not specified.  Default is undef.  (Requires
-POSIX::tzset, which may not be available in Windows.  A work-around in
-Windows is to C<set TZ=E<lt>zoneE<gt>> before running ExifTool.)
+Set the time zone for local date/time values.  The value is a time zone
+offset like "+05:00" (but note that the offset is to UTC, not from UTC, so
+it is positive for western time zones), or a time zone name like "EST5EDT".
+For Unix-based systems, the value may also be a time zone ID like
+"America/New_York".  Requires Time::Piece on Windows, or POSIX::tzset on
+other systems.  Default is undef.
 
 =item Unknown
 
@@ -1167,7 +1254,7 @@ L</ExtractInfo>:
 
 Binary, Charset, CharsetEXIF, CharsetFileName, CharsetID3, CharsetIPTC,
 CharsetPhotoshop, CharsetQuickTime, CharsetRIFF, Composite, ExtendedXMP,
-ExtractEmbedded, FastScan, FixBase, HtmlDump, HtmlDumpBase,
+ExtractEmbedded, FastScan, FixBase, HtmlDump, HtmlDumpBase, IgnoreGroups,
 IgnoreMinorErrors, IgnoreTags, Lang, LargeFileSupport, MakerNotes,
 MDItemTags, NoPDFList, Password, QuickTimeUTC (enforced 1904 time zero),
 RequestAll, RequestTags, SaveFormat, SavePath, ScanForXMP, Struct, TextOut,
@@ -1788,8 +1875,9 @@ or a trailing '#' causes the ValueConv value to be copied (same as setting
 the Type option to 'ValueConv' for this tag only).  A leading '+' sets the
 Replace option to 0 on a per-tag basis (see Options below).  Wildcards ('*'
 and '?') may be used in the tag name.  A tag name of '*' is commonly used
-when a group is specified to copy all tags in the group (eg. 'XMP:*').  A
-special feature allows tag names of the form 'DSTTAGE<lt>SRCTAG' (or
+when a group is specified to copy all tags in the group (eg. 'XMP:*').
+
+A special feature allows tag names of the form 'DSTTAGE<lt>SRCTAG' (or
 'SRCTAGE<gt>DSTTAG') to be specified to copy information to a tag with a
 different name or a specified group.  Both 'SRCTAG' and 'DSTTAG' may contain
 wildcards and/or be prefixed by a group name (eg.
@@ -1799,18 +1887,20 @@ a list with arguments of the form 'DSTTAG+E<lt>SRCTAG' or
 'DSTTAG-E<lt>SRCTAG'.  Tags are evaluated in order, so exclusions apply only
 to tags included earlier in the list.  An extension of this feature allows
 the tag value to be set from a string containing tag names with leading '$'
-symbols (eg. 'CommentE<lt>the file is $filename'). Braces '{}' may be used
-around the tag name to separate it from subsequent text, and a '$$' is used
-to to represent a '$' symbol.  The behaviour for missing tags in expressions
-is defined by the L</MissingTagValue> option. The tag value may be modified
+symbols (eg. 'CommentE<lt>the file is $filename').  Braces '{}' may be used
+around a tag name to separate it from subsequent text, and a '$$' is used to
+to represent a '$' symbol.  The behaviour for missing tags in expressions is
+defined by the L</MissingTagValue> option.  The tag value may be modified
 via changes to the default input variable ($_) in a Perl expression placed
 inside the braces and after a semicolon following the tag name (see the last
 example above).  A '@' may be added after the tag name (before the
 semicolon) to make the expression act on individual list items instead of
-the concatenated string for list-type tags. Braces within the expression
-must be balanced. Multiple options hash references may be passed to set
-different options for different tags. Options apply to subsequent tags in
-the argument list.
+the concatenated string for list-type tags.  The expression has access to
+the full ExifTool API through the current ExifTool object (C<$self>) and the
+tag key (C<$tag>).  Braces within the expression must be balanced.
+
+Multiple options hash references may be passed to set different options for
+different tags.  Options apply to subsequent tags in the argument list.
 
 By default, this routine will commute information between same-named tags in
 different groups, allowing information to be translated between images with
@@ -2421,24 +2511,25 @@ Here is a complete list of groups for each of these families:
 
 =item Family 0 (Information Type):
 
-AFCP, AIFF, APE, APP0, APP1, APP11, APP12, APP13, APP14, APP15, APP2, APP3,
-APP4, APP5, APP6, APP8, ASF, Audible, CanonVRD, Composite, DICOM, DNG, DV,
-DjVu, Ducky, EXE, EXIF, ExifTool, FITS, FLAC, FLIR, File, Flash, FlashPix,
-Font, FotoStation, GIF, GIMP, GeoTiff, GoPro, H264, HTML, ICC_Profile, ID3,
-IPTC, ISO, ITC, JFIF, JPEG, JSON, JUMBF, Jpeg2000, LNK, Leaf, Lytro, M2TS,
-MIE, MIFF, MISB, MNG, MOI, MPC, MPEG, MPF, MXF, MakerNotes, Matroska, Meta,
-Ogg, OpenEXR, Opus, PDF, PICT, PLIST, PNG, PSP, Palm, Parrot, PanasonicRaw,
-PhotoCD, PhotoMechanic, Photoshop, PostScript, PrintIM, QuickTime, RAF,
-RIFF, RSRC, RTF, Radiance, Rawzor, Real, Red, SVG, SigmaRaw, Stim, Theora,
-Torrent, Trailer, UserParam, VCard, Vorbis, WTV, XML, XMP, ZIP
+AAC, AFCP, AIFF, APE, APP0, APP1, APP11, APP12, APP13, APP14, APP15, APP2,
+APP3, APP4, APP5, APP6, APP7, APP8, APP9, ASF, Audible, Canon, CanonVRD,
+Composite, DICOM, DNG, DV, DjVu, Ducky, EXE, EXIF, ExifTool, FITS, FLAC,
+FLIR, File, Flash, FlashPix, Font, FotoStation, GIF, GIMP, GM, GeoTiff,
+GoPro, H264, HTML, ICC_Profile, ID3, IPTC, ISO, ITC, JFIF, JPEG, JSON,
+JUMBF, Jpeg2000, LNK, Leaf, Lytro, M2TS, MIE, MIFF, MISB, MNG, MOI, MPC,
+MPEG, MPF, MXF, MakerNotes, Matroska, Meta, Ogg, OpenEXR, Opus, PDF, PICT,
+PLIST, PNG, PSP, Palm, PanasonicRaw, Parrot, PhotoCD, PhotoMechanic,
+Photoshop, PostScript, PrintIM, QuickTime, RAF, RIFF, RSRC, RTF, Radiance,
+Rawzor, Real, Red, SVG, SigmaRaw, Sony, Stim, Theora, Torrent, Trailer,
+VCard, Vorbis, WTV, XML, XMP, ZIP
 
 =item Family 1 (Specific Location):
 
-AC3, AFCP, AIFF, APE, ASF, AVI1, Adobe, AdobeCM, AdobeDNG, Apple, Audible,
-CBOR, CIFF, CameraIFD, Canon, CanonCustom, CanonDR4, CanonRaw, CanonVRD,
-Casio, Chapter#, Composite, DICOM, DJI, DNG, DV, DjVu, DjVu-Meta, Ducky,
-EPPIM, EXE, EXIF, ExifIFD, ExifTool, FITS, FLAC, FLIR, File, Flash,
-FlashPix, Font, FotoStation, FujiFilm, FujiIFD, GE, GIF, GIMP, GPS,
+AAC, AC3, AFCP, AIFF, APE, ASF, AVI1, Adobe, AdobeCM, AdobeDNG, Apple,
+Audible, CBOR, CIFF, CameraIFD, Canon, CanonCustom, CanonDR4, CanonRaw,
+CanonVRD, Casio, Chapter#, Composite, DICOM, DJI, DNG, DV, DjVu, DjVu-Meta,
+Ducky, EPPIM, EXE, EXIF, ExifIFD, ExifTool, FITS, FLAC, FLIR, File, Flash,
+FlashPix, Font, FotoStation, FujiFilm, FujiIFD, GE, GIF, GIMP, GM, GPS,
 GSpherical, Garmin, GeoTiff, GlobParamIFD, GoPro, GraphConv, H264, HP, HTC,
 HTML, HTML-dc, HTML-ncc, HTML-office, HTML-prod, HTML-vw96, HTTP-equiv,
 ICC-chrm, ICC-clrt, ICC-header, ICC-meas, ICC-meta, ICC-view, ICC_Profile,
@@ -2452,28 +2543,28 @@ MIE-Lens, MIE-Main, MIE-MakerNotes, MIE-Meta, MIE-Orient, MIE-Preview,
 MIE-Thumbnail, MIE-UTM, MIE-Unknown, MIE-Video, MIFF, MISB, MNG, MOBI, MOI,
 MPC, MPEG, MPF0, MPImage, MS-DOC, MXF, MacOS, MakerNotes, MakerUnknown,
 Matroska, MediaJukebox, Meta, MetaIFD, Microsoft, Minolta, MinoltaRaw,
-Motorola, NITF, Nikon, NikonCapture, NikonCustom, NikonScan, NikonSettings,
-NineEdits, Nintendo, Ocad, Ogg, Olympus, OpenEXR, Opus, PDF, PICT, PNG,
-PNG-cICP, PNG-pHYs, PSP, Palm, Panasonic, PanasonicRaw, Parrot, Pentax,
-PhaseOne, PhotoCD, PhotoMechanic, Photoshop, PictureInfo, PostScript,
-PreviewIFD, PrintIM, ProfileIFD, Qualcomm, QuickTime, RAF, RAF2, RIFF,
-RMETA, RSRC, RTF, Radiance, Rawzor, Real, Real-CONT, Real-MDPR, Real-PROP,
-Real-RA3, Real-RA4, Real-RA5, Real-RJMD, Reconyx, Red, Ricoh, SPIFF, SR2,
-SR2DataIFD, SR2SubIFD, SRF#, SVG, Samsung, Sanyo, Scalado, Sigma, SigmaRaw,
-Sony, SonyIDC, Stim, SubIFD, System, Theora, Torrent, Track#, UserData,
-VCalendar, VCard, VNote, Version0, Vorbis, WTV, XML, XMP, XMP-DICOM,
-XMP-Device, XMP-GAudio, XMP-GCamera, XMP-GCreations, XMP-GDepth, XMP-GFocus,
-XMP-GImage, XMP-GPano, XMP-GSpherical, XMP-LImage, XMP-MP, XMP-MP1,
-XMP-PixelLive, XMP-aas, XMP-acdsee, XMP-album, XMP-apple-fi, XMP-ast,
-XMP-aux, XMP-cc, XMP-cell, XMP-crd, XMP-creatorAtom, XMP-crs, XMP-dc,
-XMP-dex, XMP-digiKam, XMP-drone-dji, XMP-dwc, XMP-et, XMP-exif, XMP-exifEX,
-XMP-expressionmedia, XMP-extensis, XMP-fpv, XMP-getty, XMP-hdr, XMP-hdrgm,
-XMP-ics, XMP-iptcCore, XMP-iptcExt, XMP-lr, XMP-mediapro, XMP-microsoft,
-XMP-mwg-coll, XMP-mwg-kw, XMP-mwg-rs, XMP-nine, XMP-panorama, XMP-pdf,
-XMP-pdfx, XMP-photomech, XMP-photoshop, XMP-plus, XMP-pmi, XMP-prism,
-XMP-prl, XMP-prm, XMP-pur, XMP-rdf, XMP-sdc, XMP-swf, XMP-tiff, XMP-x,
-XMP-xmp, XMP-xmpBJ, XMP-xmpDM, XMP-xmpMM, XMP-xmpNote, XMP-xmpPLUS,
-XMP-xmpRights, XMP-xmpTPg, ZIP, iTunes
+Motorola, NITF, Nextbase, Nikon, NikonCapture, NikonCustom, NikonScan,
+NikonSettings, NineEdits, Nintendo, Ocad, Ogg, Olympus, OpenEXR, Opus, PDF,
+PICT, PNG, PNG-cICP, PNG-pHYs, PSP, Palm, Panasonic, PanasonicRaw, Parrot,
+Pentax, PhaseOne, PhotoCD, PhotoMechanic, Photoshop, PictureInfo,
+PostScript, PreviewIFD, PrintIM, ProfileIFD, Qualcomm, QuickTime, RAF, RAF2,
+RIFF, RMETA, RSRC, RTF, Radiance, Rawzor, Real, Real-CONT, Real-MDPR,
+Real-PROP, Real-RA3, Real-RA4, Real-RA5, Real-RJMD, Reconyx, Red, Ricoh,
+SPIFF, SR2, SR2DataIFD, SR2SubIFD, SRF#, SVG, Samsung, Sanyo, Scalado,
+Sigma, SigmaRaw, Sony, SonyIDC, Stim, SubIFD, System, Theora, Torrent,
+Track#, UserData, VCalendar, VCard, VNote, Version0, Vorbis, WTV, XML, XMP,
+XMP-DICOM, XMP-Device, XMP-GAudio, XMP-GCamera, XMP-GCreations, XMP-GDepth,
+XMP-GFocus, XMP-GImage, XMP-GPano, XMP-GSpherical, XMP-LImage, XMP-MP,
+XMP-MP1, XMP-PixelLive, XMP-aas, XMP-acdsee, XMP-album, XMP-apple-fi,
+XMP-ast, XMP-aux, XMP-cc, XMP-cell, XMP-crd, XMP-creatorAtom, XMP-crs,
+XMP-dc, XMP-dex, XMP-digiKam, XMP-drone-dji, XMP-dwc, XMP-et, XMP-exif,
+XMP-exifEX, XMP-expressionmedia, XMP-extensis, XMP-fpv, XMP-getty, XMP-hdr,
+XMP-hdrgm, XMP-ics, XMP-iptcCore, XMP-iptcExt, XMP-lr, XMP-mediapro,
+XMP-microsoft, XMP-mwg-coll, XMP-mwg-kw, XMP-mwg-rs, XMP-nine, XMP-panorama,
+XMP-pdf, XMP-pdfx, XMP-photomech, XMP-photoshop, XMP-plus, XMP-pmi,
+XMP-prism, XMP-prl, XMP-prm, XMP-pur, XMP-rdf, XMP-sdc, XMP-swf, XMP-tiff,
+XMP-x, XMP-xmp, XMP-xmpBJ, XMP-xmpDM, XMP-xmpDSA, XMP-xmpMM, XMP-xmpNote,
+XMP-xmpPLUS, XMP-xmpRights, XMP-xmpTPg, ZIP, iTunes
 
 =item Family 2 (Category):
 
@@ -2658,6 +2749,26 @@ The number of tags added.
 Pre-existing tags with the same ID will be replaced in the destination
 table. See lib/Image/ExifTool/README in the full distribution for full
 details on the elements of the tag information hash.
+
+=back
+
+=head2 OrderedKeys [static]
+
+Return a list of ordered keys from a tag value that is a HASH reference
+when the Struct option is used.
+
+    use Image::ExifTool ':Public';
+    my @keys = OrderedKeys($structRef);
+
+=over 4
+
+=item Inputs:
+
+0) Structure HASH reference
+
+=item Return Value:
+
+List of ordered keys, or sorted alphabetically if not ordered.
 
 =back
 
@@ -2876,7 +2987,7 @@ specified by the L</Charset> option.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey
+Copyright 2003-2024, Phil Harvey
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

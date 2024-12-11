@@ -31,7 +31,7 @@ use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 
-$VERSION = '1.91';
+$VERSION = '1.96';
 
 sub ProcessFujiDir($$$);
 sub ProcessFaceRec($$$);
@@ -528,6 +528,7 @@ my %faceCategories = (
             1 => 'Full-frame on GFX', #IB
             2 => 'Sports Finder Mode', # (mechanical shutter)
             4 => 'Electronic Shutter 1.25x Crop', # (continuous high)
+            8 => 'Digital Tele-Conv', #forum15784
         },
     },
     0x104e => { #forum10800 (X-Pro3)
@@ -549,6 +550,16 @@ my %faceCategories = (
             3 => 'Electronic Front Curtain', #10
         },
     },
+    0x1051 => { #forum15784
+        Name => 'CropFlag',
+        Writable => 'int8u',
+        Notes => q(
+            this tag exists only if the image was cropped, and is 0 for cropped JPG
+            image or 1 for a cropped RAF
+        ),
+    },
+    0x1052 => { Name => 'CropTopLeft', Writable => 'int32u' }, #forum15784
+    0x1053 => { Name => 'CropSize',    Writable => 'int32u' }, #forum15784
     # 0x1100 - This may not work well for newer cameras (ref forum12682)
     0x1100 => [{
         Name => 'AutoBracketing',
@@ -1030,14 +1041,19 @@ my %faceCategories = (
     },
     0.5 => {
         Name => 'AFAreaZoneSize',
-        Mask => 0xf0000,
+        Mask => 0xff0000,
         PrintConv => {
             0 => 'n/a',
             OTHER => sub {
                 my ($val, $inv) = @_;
-                return "$val x $val" unless $inv;
-                $val =~ s/ ?x.*//;
-                return $val;
+                my ($w, $h);
+                if ($inv) {
+                    my ($w, $h) = $val =~ /(\d+)/g;
+                    return 0 unless $w and $h;
+                    return((($h << 5) & 0xf0) | ($w & 0x0f));
+                }
+                ($w, $h) = ($val & 0x0f, $val >> 5);
+                return "$w x $h";
             },
         },
     },
@@ -1153,6 +1169,46 @@ my %faceCategories = (
     Face8Birthday => { },
 );
 
+# tags extracted from RAF header
+%Image::ExifTool::FujiFilm::RAFHeader = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'RAF', 1 => 'RAF', 2 => 'Image' },
+    NOTES => 'Tags extracted from the header of RAF images.',
+  # 0x00 - eg. "FUJIFILMCCD-RAW 0201FA392001FinePix S3Pro"
+    0x3c => { #PH
+        Name => 'RAFVersion',
+        Format => 'undef[4]',
+    },
+    # (all int32u values)
+  # 0x40 - 1 for M-RAW, 0 otherwise?
+  # 0x44 - high word of M-RAW offset? (only seen zero)
+  # 0x48 - M-RAW header offset
+  # 0x4c - M-RAW header length
+  # 0x50 - ? (only seen zero)
+  # 0x54 - JPEG offset
+  # 0x58 - JPEG length
+  # 0x5c - RAF directory offset
+  # 0x60 - RAF directory length
+  # 0x64 - FujiIFD dir offset
+  # 0x68 - FujiIFD dir length
+  # 0x6c - RAFCompression or JPEG start
+    0x6c => { #10
+        Name => 'RAFCompression',
+        Condition => '$$valPt =~ /^\0\0\0/', # (JPEG header is in this location for some RAF versions)
+        Format => 'int32u',
+        PrintConv => { 0 => 'Uncompressed', 2 => 'Lossless', 3 => 'Lossy'  },
+    },
+  # 0x70 - ? same as 0x68?
+  # 0x74 - ? usually 0, but have seen 0x1700
+  # 0x78 - RAF1 dir offset
+  # 0x7c - RAF1 dir length
+  # 0x80 - FujiIFD1 dir offset
+  # 0x84 - FujiIFD1 dir length
+  # 0x88-0x8c - always zero?
+  # 0x90 - ? same as 0x74?
+  # 0x94 - JPEG or M-RAW start
+);
+
 # tags in RAF images (ref 5)
 %Image::ExifTool::FujiFilm::RAF = (
     PROCESS_PROC => \&ProcessFujiDir,
@@ -1187,12 +1243,36 @@ my %faceCategories = (
         ValueConv => 'my @v=reverse split(" ",$val);"@v"', # reverse to show width first
         PrintConv => '$val=~tr/ /x/; $val',
     },
+    # 0x112 - int16u[2] same as 0x111 but with width/height swapped?
+    # 0x113 - int16u[2] same as 0x111?
     0x115 => {
         Name => 'RawImageAspectRatio',
         Format => 'int16u',
         Count => 2,
         ValueConv => 'my @v=reverse split(" ",$val);"@v"', # reverse to show width first
         PrintConv => '$val=~tr/ /:/; $val',
+    },
+    0x117 => {
+        Name => 'RawZoomActive',
+        Format => 'int32u',
+        Count => 1,
+        PrintConv => { 0 => 'No', 1 => 'Yes' },
+    },
+    0x118 => {
+        Name => 'RawZoomTopLeft',
+        Format => 'int16u',
+        Count => 2,
+        Notes => 'relative to RawCroppedImageSize',
+        ValueConv => 'my @v=reverse split(" ",$val);"@v"', # reverse to show width first
+        PrintConv => '$val=~tr/ /x/; $val',
+    },
+    0x119 => {
+        Name => 'RawZoomSize',
+        Format => 'int16u',
+        Count => 2,
+        Notes => 'relative to RawCroppedImageSize',
+        ValueConv => 'my @v=reverse split(" ",$val);"@v"', # reverse to show width first
+        PrintConv => '$val=~tr/ /x/; $val',
     },
     0x121 => [
         {
@@ -1236,6 +1316,7 @@ my %faceCategories = (
         Count => 36,
         PrintConv => '$val =~ tr/012 /RGB/d; join " ", $val =~ /....../g',
     },
+    # 0x141 - int16u[2] Bit depth? "14 42" for 14-bit RAF and "16 48" for 16-bit RAF
     0x2000 => { #IB
         Name => 'WB_GRGBLevelsAuto',
         Format => 'int16u',
@@ -1408,6 +1489,8 @@ my %faceCategories = (
     0xf00e => 'WB_GRBLevels',
     0xf00f => 'ChromaticAberrationParams', # (rational64s[23])
     0xf010 => 'VignettingParams', #9 (rational64s[31 or 64])
+    # 0xf013 - int32u[3] same as 0xf00d
+    # 0xf014 - int32u[3] - also related to WhiteBalance
 );
 
 # information found in FFMV atom of MOV videos
@@ -1468,12 +1551,15 @@ my %faceCategories = (
     },
     1 => { Name => 'RawImageNumber', Format => 'int32u' },
     # 3 - seen "0 100", "-300 100" and "300 100" for a sequence of 3 images
-    3 => { Name => 'MRAW_0x0003', Format => 'rational32s', Unknown => 1, Hidden => 1, PrintConv => 'sprintf("%+.2f",$val)' },
+    3 => { Name => 'ExposureCompensation', Format => 'rational32s', Unknown => 1, Hidden => 1, PrintConv => 'sprintf("%+.2f",$val)' },
     # 4 - (same value as 3 in all my samples)
-    4 => { Name => 'MRAW_0x0004', Format => 'rational32s', Unknown => 1, Hidden => 1, PrintConv => 'sprintf("%+.2f",$val)' },
+    4 => { Name => 'ExposureCompensation2', Format => 'rational32s', Unknown => 1, Hidden => 1, PrintConv => 'sprintf("%+.2f",$val)' },
     # 5 - seen "10 1600", "10 6800", "10 200", "10 35000" etc
+    5 => { Name => 'ExposureTime', Format => 'rational64u', PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)' },
     # 6 - seen "450 100", "400 100" (all images in RAF have same value)
+    6 => { Name => 'FNumber', Format => 'rational64u', PrintConv => 'Image::ExifTool::Exif::PrintFNumber($val)' },
     # 7 - seen 200, 125, 250, 2000
+    7 => 'ISO',
     # 8 - seen 0
 );
 
@@ -1685,7 +1771,7 @@ sub WriteRAF($$)
     # rewrite the embedded JPEG in memory
     my %jpegInfo = (
         Parent  => 'RAF',
-        RAF     => new File::RandomAccess(\$jpeg),
+        RAF     => File::RandomAccess->new(\$jpeg),
         OutFile => \$outJpeg,
     );
     $$et{FILE_TYPE} = 'JPEG';
@@ -1773,7 +1859,7 @@ sub ProcessRAF($$)
     my ($buff, $jpeg, $warn, $offset);
 
     my $raf = $$dirInfo{RAF};
-    $raf->Read($buff,0x5c) == 0x5c    or return 0;
+    $raf->Read($buff,0x70) == 0x70    or return 0;
     $buff =~ /^FUJIFILM/              or return 0;
     # get position and size of M-RAW header and jpeg preview
     my ($mpos, $mlen) = unpack('x72NN', $buff);
@@ -1783,13 +1869,15 @@ sub ProcessRAF($$)
         $raf->Seek($jpos, 0)              or return 0;
         $raf->Read($jpeg, $jlen) == $jlen or return 0;
     }
+    SetByteOrder('MM');
     $et->SetFileType();
-    $et->FoundTag('RAFVersion', substr($buff, 0x3c, 4));
-
+    my $tbl = GetTagTable('Image::ExifTool::FujiFilm::RAFHeader');
+    $et->ProcessDirectory({ DataPt => \$buff, DirName => 'RAFHeader' }, $tbl);
+    
     # extract information from embedded JPEG
     my %dirInfo = (
         Parent => 'RAF',
-        RAF    => new File::RandomAccess(\$jpeg),
+        RAF    => File::RandomAccess->new(\$jpeg),
     );
     if ($jpos) {
         $$et{BASE} += $jpos;
@@ -1871,7 +1959,7 @@ FujiFilm maker notes in EXIF information, and to read/write FujiFilm RAW
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

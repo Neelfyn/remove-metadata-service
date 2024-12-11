@@ -14,7 +14,7 @@ use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Import;
 
-$VERSION = '1.05';
+$VERSION = '1.09';
 
 sub ProcessJSON($$);
 sub ProcessTag($$$$%);
@@ -60,12 +60,20 @@ sub FoundTag($$$$%)
     # avoid conflict with special table entries
     $tag .= '!' if $Image::ExifTool::specialTags{$tag};
 
-    AddTagToTable($tagTablePtr, $tag, {
-        Name => Image::ExifTool::MakeTagName($tag),
-        %flags,
-        Temporary => 1,
-    }) unless $$tagTablePtr{$tag};
-
+    unless ($$tagTablePtr{$tag}) {
+        my $name = $tag;
+        $name =~ tr/:/_/; # use underlines in place of colons in tag name
+        $name =~ s/^c2pa/C2PA/i;   # hack to fix "C2PA" case
+        $name = Image::ExifTool::MakeTagName($name);
+        my $desc = Image::ExifTool::MakeDescription($name);
+        $desc =~ s/^C2 PA/C2PA/;    # hack to get "C2PA" correct
+        AddTagToTable($tagTablePtr, $tag, {
+            Name => $name,
+            Description => $desc,
+            %flags,
+            Temporary => 1,
+        });
+    }
     $et->HandleTag($tagTablePtr, $tag, $val);
 }
 
@@ -84,8 +92,7 @@ sub ProcessTag($$$$%)
             return unless $et->Options('Struct') > 1;
         }
         # support hashes with ordered keys
-        my @keys = $$val{_ordered_keys_} ? @{$$val{_ordered_keys_}} : sort keys %$val;
-        foreach (@keys) {
+        foreach (Image::ExifTool::OrderedKeys($val)) {
             my $tg = $tag . ((/^\d/ and $tag =~ /\d$/) ? '_' : '') . ucfirst;
             $tg =~ s/([^a-zA-Z])([a-z])/$1\U$2/g;
             ProcessTag($et, $tagTablePtr, $tg, $$val{$_}, %flags, Flat => 1);
@@ -117,7 +124,7 @@ sub ProcessJSON($$)
             my $buff = substr(${$$dirInfo{DataPt}}, $$dirInfo{DirStart}, $$dirInfo{DirLen});
             $dataPt = \$buff;
         }
-        $raf = new File::RandomAccess($dataPt);
+        $raf = File::RandomAccess->new($dataPt);
         # extract as a block if requested
         my $blockName = $$dirInfo{BlockInfo} ? $$dirInfo{BlockInfo}{Name} : '';
         my $blockExtract = $et->Options('BlockExtract');
@@ -147,7 +154,7 @@ sub ProcessJSON($$)
 
     # extract tags from JSON database
     foreach $key (sort keys %database) {
-        foreach $tag (sort keys %{$database{$key}}) {
+        foreach $tag (Image::ExifTool::OrderedKeys($database{$key})) {
             my $val = $database{$key}{$tag};
             # (ignore SourceFile if generated automatically by ReadJSON)
             next if $tag eq 'SourceFile' and defined $val and $val eq '*';
@@ -176,7 +183,7 @@ information from JSON files.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
