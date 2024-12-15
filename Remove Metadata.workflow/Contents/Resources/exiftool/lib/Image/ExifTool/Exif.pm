@@ -57,7 +57,7 @@ use vars qw($VERSION $AUTOLOAD @formatSize @formatName %formatNumber %intFormat
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::MakerNotes;
 
-$VERSION = '4.46';
+$VERSION = '4.52';
 
 sub ProcessExif($$$);
 sub WriteExif($$$);
@@ -594,6 +594,14 @@ my %opcodeInfo = (
             DataTag => 'OtherImage',
         },
         {
+            Condition => '$$self{Compression} and $$self{Compression} eq "52546"', # DNG 1.7 Jpeg XL
+            Name => 'PreviewJXLStart',
+            IsOffset => 1,
+            IsImageData => 1,
+            OffsetPair => 0x117,  # point to associated byte counts
+            DataTag => 'PreviewJXL',
+        },
+        {
             # (APP1 IFD2 is for Leica JPEG preview)
             Condition => q[
                 not ($$self{TIFF_TYPE} eq 'CR2' and $$self{DIR_NAME} eq 'IFD0') and
@@ -686,6 +694,12 @@ my %opcodeInfo = (
             Name => 'OtherImageLength',
             OffsetPair => 0x111,   # point to associated offset
             DataTag => 'OtherImage',
+        },
+        {
+            Condition => '$$self{Compression} and $$self{Compression} eq "52546"', # DNG 1.7 Jpeg XL
+            Name => 'PreviewJXLLength',
+            OffsetPair => 0x111,   # point to associated offset
+            DataTag => 'PreviewJXL',
         },
         {
             # (APP1 IFD2 is for Leica JPEG preview)
@@ -1426,12 +1440,12 @@ my %opcodeInfo = (
         Count => 6,
         Priority => 0,
     },
-  # 0x220 - int32u: 0 (IFD0, Xaiomi Redmi models)
-  # 0x221 - int32u: 0 (IFD0, Xaiomi Redmi models)
-  # 0x222 - int32u: 0 (IFD0, Xaiomi Redmi models)
-  # 0x223 - int32u: 0 (IFD0, Xaiomi Redmi models)
-  # 0x224 - int32u: 0,1 (IFD0, Xaiomi Redmi models)
-  # 0x225 - string: "" (IFD0, Xaiomi Redmi models)
+  # 0x220 - int32u: 0 (IFD0, Xiaomi Redmi models)
+  # 0x221 - int32u: 0 (IFD0, Xiaomi Redmi models)
+  # 0x222 - int32u: 0 (IFD0, Xiaomi Redmi models)
+  # 0x223 - int32u: 0 (IFD0, Xiaomi Redmi models)
+  # 0x224 - int32u: 0,1 (IFD0, Xiaomi Redmi models)
+  # 0x225 - string: "" (IFD0, Xiaomi Redmi models)
     0x22f => 'StripRowCounts',
     0x2bc => {
         Name => 'ApplicationNotes', # (writable directory!)
@@ -1443,6 +1457,16 @@ my %opcodeInfo = (
         SubDirectory => {
             DirName => 'XMP',
             TagTable => 'Image::ExifTool::XMP::Main',
+        },
+    },
+    0x303 => { #https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-constant-property-item-descriptions
+        Name => 'RenderingIntent',
+        Format => 'int8u',
+        PrintConv => {
+            0 => 'Perceptual',
+            1 => 'Relative Colorimetric',
+            2 => 'Saturation',
+            3 => 'Absolute colorimetric',
         },
     },
     0x3e7 => 'USPTOMiscellaneous', #20
@@ -2411,7 +2435,7 @@ my %opcodeInfo = (
         Count => -1, # 2, 3 or 4 values
     },
     0x9215 => 'ExposureIndex', #12
-    0x9216 => 'TIFF-EPStandardID', #12
+    0x9216 => { Name => 'TIFF-EPStandardID', PrintConv => '$val =~ tr/ /./; $val' }, #12
     0x9217 => { #12
         Name => 'SensingMethod',
         Groups => { 2 => 'Camera' },
@@ -2523,8 +2547,18 @@ my %opcodeInfo = (
         Name => 'CameraElevationAngle',
         Writable => 'rational64s',
     },
-  # 0x9999 - string: camera settings (ExifIFD, Xiaomi POCO F1)
-  # 0x9aaa - int8u[2176]: ? (ExifIFD, Xiaomi POCO F1)
+    0x9999 => { # (ExifIFD, Xiaomi)
+        Name => 'XiaomiSettings', # (writable directory!)
+        Writable => 'string',
+        Protected => 1,
+        SubDirectory => { TagTable => 'Image::ExifTool::JSON::Main' },
+    },
+    0x9a00 => {
+        Name => 'XiaomiModel',
+        Writable => 'string',
+        Protected => 1,
+    },
+  # 0x9aaa - int8u[2048/2176]: ? (ExifIFD, Xiaomi POCO F1)
     0x9c9b => {
         Name => 'XPTitle',
         Format => 'undef',
@@ -2691,7 +2725,7 @@ my %opcodeInfo = (
         Count => 2,
     },
     0xa215 => { Name => 'ExposureIndex', Writable => 'rational64u' },
-    0xa216 => 'TIFF-EPStandardID',
+    0xa216 => { Name => 'TIFF-EPStandardID', PrintConv => '$val =~ tr/ /./; $val' },
     0xa217 => {
         Name => 'SensingMethod',
         Groups => { 2 => 'Camera' },
@@ -2897,7 +2931,7 @@ my %opcodeInfo = (
     0xa433 => { Name => 'LensMake',         Writable => 'string' }, #24
     0xa434 => { Name => 'LensModel',        Writable => 'string' }, #24
     0xa435 => { Name => 'LensSerialNumber', Writable => 'string' }, #24
-    0xa436 => { Name => 'Title',            Writable => 'string', Avoid => 1 }, #33
+    0xa436 => { Name => 'ImageTitle',       Writable => 'string' }, #33
     0xa437 => { Name => 'Photographer',     Writable => 'string' }, #33
     0xa438 => { Name => 'ImageEditor',      Writable => 'string' }, #33
     0xa439 => { Name => 'CameraFirmware',          Writable => 'string' }, #33
@@ -2976,6 +3010,7 @@ my %opcodeInfo = (
     0xa480 => { Name => 'GDALMetadata',     Writable => 'string', WriteGroup => 'IFD0' }, #3
     0xa481 => { Name => 'GDALNoData',       Writable => 'string', WriteGroup => 'IFD0' }, #3
     0xa500 => { Name => 'Gamma',            Writable => 'rational64u' },
+  # 0xa661 - string: ? (ExifIFD, Xiaomi)
     0xafc0 => 'ExpandSoftware', #JD (Opanda)
     0xafc1 => 'ExpandLens', #JD (Opanda)
     0xafc2 => 'ExpandFilm', #JD (Opanda)
@@ -4307,7 +4342,7 @@ my %opcodeInfo = (
         Count => -1,
         Protected => 1,
     },
-    0xcd3b => { # DNG 1.6
+    0xcd3f => { # DNG 1.6
         Name => 'RGBTables',
         Writable => 'undef',
         WriteGroup => 'IFD0',
@@ -4327,6 +4362,7 @@ my %opcodeInfo = (
         Deletable => 1,
         SubDirectory => {
             TagTable => 'Image::ExifTool::Jpeg2000::Main',
+            DirName => 'JUMBF',
             ByteOrder => 'BigEndian',
         },
     },
@@ -4367,6 +4403,23 @@ my %opcodeInfo = (
         Format => 'string',
         WriteGroup => 'IFD0',
         Protected => 1,
+    },
+    0xcd49 => { # DNG 1.7.1
+        Name => 'JXLDistance',
+        Writable => 'float',
+        WriteGroup => 'IFD0',
+    },
+    0xcd4a => { # DNG 1.7.1
+        Name => 'JXLEffort',
+        Notes => 'values range from 1=low to 9=high',
+        Writable => 'int32u',
+        WriteGroup => 'IFD0',
+    },
+    0xcd4b => { # DNG 1.7.1
+        Name => 'JXLDecodeSpeed',
+        Notes => 'values range from 1=slow to 4=fast',
+        Writable => 'int32u',
+        WriteGroup => 'IFD0',
     },
     0xea1c => { #13
         Name => 'Padding',
@@ -4949,6 +5002,39 @@ my %subSecConv = (
             Image::ExifTool::Exif::ExtractImage($self,$val[0],$val[1],"OtherImage");
         },
     },
+    PreviewJXL => {
+        Groups => { 0 => 'EXIF', 1 => 'SubIFD', 2 => 'Preview' },
+        Require => {
+            0 => 'PreviewJXLStart',
+            1 => 'PreviewJXLLength',
+        },
+        Desire => {
+            2 => 'PreviewJXLStart (1)',
+            3 => 'PreviewJXLLength (1)',
+        },
+        # retrieve all other JXL images
+        RawConv => q{
+            if ($val[2] and $val[3]) {
+                my $i = 1;
+                for (;;) {
+                    my %val = ( 0 => $$val{2}, 1 => $$val{3} );
+                    $self->FoundTag($tagInfo, \%val);
+                    ++$i;
+                    $$val{2} = "$$val{0} ($i)";
+                    last unless defined $$self{VALUE}{$$val{2}};
+                    $$val{3} = "$$val{1} ($i)";
+                    last unless defined $$self{VALUE}{$$val{3}};
+                }
+            }
+            @grps = $self->GetGroup($$val{0});
+            my $image = $self->ExtractBinary($val[0], $val[1], 'PreviewJXL');
+            unless ($image =~ /^(Binary data|\xff\x0a|\0\0\0\x0cJXL \x0d\x0a......ftypjxl )/s) {
+                $self->Warn("$tag is not a valid JXL image",1);
+                return undef;
+            }
+            return \$image;
+        },
+    },
     PreviewImageSize => {
         Require => {
             0 => 'PreviewImageWidth',
@@ -5074,7 +5160,8 @@ my %subSecConv = (
             GPSLongitudeRef => '(defined $val and $val =~ / (-?)/) ? ($1 ? "W" : "E") : undef',
         },
         PrintConvInv => q{
-            return undef unless $val =~ /(.*? ?[NS]?), ?(.*? ?[EW]?)$/;
+            return undef unless $val =~ /(.*? ?[NS]?), ?(.*? ?[EW]?)$/ or
+                $val =~ /^\s*(-?\d+(?:\.\d+)?)\s*(-?\d+(?:\.\d+)?)\s*$/;
             my ($lat, $lon) = ($1, $2);
             require Image::ExifTool::GPS;
             $lat = Image::ExifTool::GPS::ToDegrees($lat, 1, "lat");
@@ -6444,7 +6531,7 @@ sub ProcessExif($$$)
                                 TagInfo => $tagInfo || $tmpInfo,
                                 Offset  => $base + $valuePtr + $dataPos,
                                 Size    => $size,
-                                Fixup   => new Image::ExifTool::Fixup,
+                                Fixup   => Image::ExifTool::Fixup->new,
                             };
                         }
                     } else {
@@ -7043,7 +7130,7 @@ EXIF and TIFF meta information.
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

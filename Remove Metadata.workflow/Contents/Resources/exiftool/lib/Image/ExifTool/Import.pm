@@ -12,7 +12,7 @@ require Exporter;
 
 use vars qw($VERSION @ISA @EXPORT_OK);
 
-$VERSION = '1.10';
+$VERSION = '1.13';
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(ReadCSV ReadJSON);
 
@@ -38,13 +38,13 @@ sub ReadCSV($$;$$)
         $raf = $file;
         $file = 'CSV file';
     } elsif (ref $file eq 'GLOB') {
-        $raf = new File::RandomAccess($file);
+        $raf = File::RandomAccess->new($file);
         $file = 'CSV file';
     } else {
         open CSVFILE, $file or return "Error opening CSV file '${file}'";
         binmode CSVFILE;
         $openedFile = 1;
-        $raf = new File::RandomAccess(\*CSVFILE);
+        $raf = File::RandomAccess->new(\*CSVFILE);
     }
     $delim = ',' unless defined $delim;
     # set input record separator by first newline found in the file
@@ -87,6 +87,7 @@ sub ReadCSV($$;$$)
                 $fileInfo{$tags[$i]} =
                     (defined $missingValue and $vals[$i] eq $missingValue) ? undef : $vals[$i];
             }
+            $fileInfo{_ordered_keys_} = \@tags;
             # figure out the file name to use
             if ($fileInfo{SourceFile}) {
                 $$database{$fileInfo{SourceFile}} = \%fileInfo;
@@ -173,7 +174,7 @@ Tok: for (;;) {
         }
         # see what type of object this is
         if ($tok eq '{') {      # object (hash)
-            $rtnVal = { } unless defined $rtnVal;
+            $rtnVal = { _ordered_keys_ => [ ] } unless defined $rtnVal;
             for (;;) {
                 # read "KEY":"VALUE" pairs
                 unless (defined $key) {
@@ -189,6 +190,7 @@ Tok: for (;;) {
                     $pos = pos $$buffPt;
                     return undef unless defined $val;
                     $$rtnVal{$key} = $val;
+                    push @{$$rtnVal{_ordered_keys_}}, $key;
                     undef $key;
                 }
                 # scan to delimiting ',' or bounding '}'
@@ -238,7 +240,7 @@ Tok: for (;;) {
 
 #------------------------------------------------------------------------------
 # Read JSON file
-# Inputs: 0) JSON file name, file ref or RAF ref, 1) database hash ref,
+# Inputs: 0) JSON file name, file ref, RAF ref or SCALAR ref, 1) database hash ref,
 #         2) flag to delete "-" tags, 3) character set
 # Returns: undef on success, or error string
 sub ReadJSON($$;$$)
@@ -253,13 +255,16 @@ sub ReadJSON($$;$$)
         $raf = $file;
         $file = 'JSON file';
     } elsif (ref $file eq 'GLOB') {
-        $raf = new File::RandomAccess($file);
+        $raf = File::RandomAccess->new($file);
         $file = 'JSON file';
+    } elsif (ref $file eq 'SCALAR') {
+        $raf = File::RandomAccess->new($file);
+        $file = 'in memory';
     } else {
         open JSONFILE, $file or return "Error opening JSON file '${file}'";
         binmode JSONFILE;
         $openedFile = 1;
-        $raf = new File::RandomAccess(\*JSONFILE);
+        $raf = File::RandomAccess->new(\*JSONFILE);
     }
     my $obj = ReadJSONObject($raf);
     close JSONFILE if $openedFile;
@@ -342,13 +347,15 @@ option for a list of valid character sets.
 These functions return an error string, or undef on success and populate the
 database hash with entries from the CSV or JSON file.  Entries are keyed
 based on the SourceFile column of the CSV or JSON information, and are
-stored as hash lookups of tag name/value for each SourceFile.
+stored as hash lookups of tag name/value for each SourceFile.  The order
+of the keys (CSV column order or order in a JSON object) is stored as an
+ARRAY reference in a special "_ordered_keys_" element of this hash.
 
 =back
 
 =head1 AUTHOR
 
-Copyright 2003-2023, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
