@@ -31,7 +31,7 @@ use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 
-$VERSION = '1.96';
+$VERSION = '1.97';
 
 sub ProcessFujiDir($$$);
 sub ProcessFaceRec($$$);
@@ -628,6 +628,7 @@ my %faceCategories = (
             0x60006 => 'Partial Color Purple',
             0x70000 => 'Soft Focus',
             0x90000 => 'Low Key',
+            0x100000 => 'Light Leak', #forum17392
         },
     },
     0x1210 => { #2
@@ -1959,7 +1960,7 @@ FujiFilm maker notes in EXIF information, and to read/write FujiFilm RAW
 
 =head1 AUTHOR
 
-Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2025, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
