@@ -58,7 +58,7 @@ use Image::ExifTool::Exif;
 use Image::ExifTool::GPS;
 use Image::ExifTool::HP;
 
-$VERSION = '3.47';
+$VERSION = '3.51';
 
 sub CryptShutterCount($$);
 sub PrintFilter($$$);
@@ -558,6 +558,7 @@ my %pentaxModelID = (
     0x13254 => 'K-3 Mark III', #IB (Ricoh)
     0x13290 => 'WG-70', # (Ricoh)
     0x1329a => 'GR IIIx', # (Ricoh)
+    0x132b8 => 'KF', #github322 (Ricoh)
     0x132d6 => 'K-3 Mark III Monochrome', #github226 (Ricoh)
 );
 
@@ -734,6 +735,18 @@ my %filterSettings = (
     50 => ['NewColor',      { 1=>'Red',2=>'Magenta',3=>'Blue',4=>'Cyan',5=>'Green',6=>'Yellow' }], #31 Replace Color
     51 => ['ColorScale', '%d'], #31 Replace Color (1-5)
     52 => ['Toning2', '%+d'], #31 Extract Color (-3-+3)
+);
+
+# order of selectable K-3iii AF points.  The array looks like this:
+#     B1 C1 E1 G1 I1 K1 L1
+#  A3 B3 C3 E3 G3 I3 K3 L3 M3
+#  A5 B5 C5 E5 G5 I5 K5 L5 M5
+#  A7 B7 C7 E7 G7 I7 K7 L7 M7
+#     B9 C9 E9 G9 I9 K9 L9
+my @k3iiiAF = qw(
+    C1 E1 G1 I1 K1 C3 E3 G3 I3 K3 C5 E5 G5
+    I5 K5 C7 E7 G7 I7 K7 C9 E9 G9 I9 K9 A5 M5 B3
+    L3 B5 L5 B7 L7 B1 L1 B9 L9 A3 M3 A7 M7
 );
 
 # decoding for Pentax Firmware ID tags - PH
@@ -1250,7 +1263,7 @@ my %binaryDataAttrs = (
         }],
     },{
         Name => 'AFPointSelected',
-        Condition => '$$self{Model} =~ /K-3\b/',
+        Condition => '$$self{Model} =~ /(K-3|KP)\b/',
         Writable => 'int16u',
         Notes => 'K-3',
         PrintConvColumns => 2,
@@ -1943,6 +1956,7 @@ my %binaryDataAttrs = (
             '18 3' => 'Auto Program (MTF)', #PH (NC)
             '18 22' => 'Auto Program (Shallow DOF)', #PH (NC)
             '20 22' => 'Blur Control', #PH (Q)
+            '26 0' => 'Shutter and Aperture Priority (TAv)', #PH (K-3III)
             '249 0' => 'Movie (TAv)', #31
             '250 0' => 'Movie (TAv, Auto Aperture)', #31
             '251 0' => 'Movie (Manual)', #31
@@ -3024,6 +3038,10 @@ my %binaryDataAttrs = (
     # 0x0236 - undef[52] (Q)
     # 0x0237 - undef[11] possibly related to smart effect setting? (Q)
     # 0x0238 - undef[9] (Q)
+    0x0238 => { #KarstenGieselmann
+        Name => 'CAFPointInfo',
+        SubDirectory => { TagTable => 'Image::ExifTool::Pentax::CAFPointInfo' },
+    },
     0x0239 => { #PH
         Name => 'LensInfoQ',
         SubDirectory => { TagTable => 'Image::ExifTool::Pentax::LensInfoQ' },
@@ -4917,6 +4935,7 @@ my %binaryDataAttrs = (
     # CalFlag, ContrastFlag, PrecalFlag, SelectSensor
     0x00 => { #PH
         Name => 'AFPointsUnknown1',
+        Condition => '$$self{Model} !~ /K-3 Mark III/', # (and maybe others?)
         Unknown => 1,
         Format => 'int16u',
         ValueConv => '$self->Options("Unknown") ? $val : $val & 0x7ff',
@@ -4944,6 +4963,7 @@ my %binaryDataAttrs = (
     },
     0x02 => { #PH
         Name => 'AFPointsUnknown2',
+        Condition => '$$self{Model} !~ /K-3 Mark III/', # (and maybe others?)
         Unknown => 1,
         Format => 'int16u',
         ValueConv => '$self->Options("Unknown") ? $val : $val & 0x7ff',
@@ -4985,10 +5005,10 @@ my %binaryDataAttrs = (
     # 0x0a - values: 00,05,0d,15,86,8e,a6,ae
     0x0b => { #JD
         Name => 'AFPointsInFocus',
-        Condition => '$$self{Model} !~ /K-[13]\b/',
+        Condition => '$$self{Model} !~ /(K-(1|3|70)|KP)\b/',
         Notes => q{
-            models other than the K-1 and K-3.  May report two points in focus even
-            though a single AFPoint has been selected, in which case the selected
+            models other than the K-1, K-3, K-70 and KP.  May report two points in focus
+            even though a single AFPoint has been selected, in which case the selected
             AFPoint is the first reported
         },
         PrintConvColumns => 2,
@@ -5016,6 +5036,41 @@ my %binaryDataAttrs = (
             20 => 'Mid-right',
         },
     },
+    0x14 => {
+        Name => 'AFPointValues',
+        Condition => '$$self{Model} eq "PENTAX K-3 Mark III"', # any other models?
+        Format => 'int16uRev[69]',
+        Unknown => 1,
+        Notes => 'some unknown values related to each AFPoint',
+        # order is the same as AFPoints below, but there is an additional value for
+        # each AF point starting at offset 28 in the array (yes, the range overlaps
+        # with the 1st values)
+        # (values are int16s stored in reversed byte order)
+        ValueConv => 'my @a=split " ",$val;$_>32767 and $_-=65536 foreach @a;join " ",@a',
+        PrintConv => \&AFPointValues,
+    },
+    0x12a => { # byte has a value of 2 if corresponding AF point is selected
+        Name => 'AFPointsSelected',
+        Condition => '$$self{Model} eq "PENTAX K-3 Mark III"', # any other models?
+        Notes => q{
+            K-3III only. 41 selectable AF points from a total of 101 available in a 13x9
+            grid. Columns are labelled A-M and rows are 1-9. The center point is G5
+        },
+        Format => 'int8u[41]',
+        PrintConv => 'Image::ExifTool::Pentax::AFPointsK3iii($val,$self,2)',
+    },
+#
+# (maybe not coincidentally, there are 60 unknown bytes
+#  here, and there are also 60 non-selectable AF points)
+#
+    0x18f => { # byte has a value of 1 if corresponding AF point is ... in focus maybe?
+        # usually the same points as AFPoints above, but not always
+        Name => 'AFPointsUnknown',
+        Condition => '$$self{Model} eq "PENTAX K-3 Mark III"', # any other models?
+        Unknown => 1,
+        Format => 'int8u[41]',
+        PrintConv => \&AFPointsK3iii,
+    },
     0x1fa => {
         Name => 'LiveView',
         Notes => 'decoded only for the K-3 III',
@@ -5027,6 +5082,37 @@ my %binaryDataAttrs = (
         Notes => 'decoded only for the K-3 II',
         Condition => '$$self{Model} eq "PENTAX K-3 II"',
         PrintConv => { 0 => 'Off', 1 => 'Short', 2 => 'Medium', 3 => 'Long' },
+    },
+);
+
+# AF information for K-01 and later (ref Karsten Gieselmann private communication)
+%Image::ExifTool::Pentax::CAFPointInfo = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    DATAMEMBER => [ 1 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'Contrast-detect AF-point information for the K-01 and later models.',
+    1 => {
+        Name => 'NumCAFPoints',
+        RawConv => '$$self{NumCAFPoints} = ($val & 0x0f) * ($val >> 4); $val',
+        ValueConv => '($val >> 4) * ($val & 0x0f)',
+    }, 
+    1.1 => {
+        Name => 'CAFGridSize',
+        ValueConv => '($val >> 4) . " " . ($val & 0x0f)', # (width x height)
+        PrintConv => '$val =~ tr/ /x/; $val',
+    },
+    2 => {
+        Name => 'CAFPointsInFocus',
+        Format => 'int8u[int(($val{1}+3)/4)]',
+        Writable => 0,
+        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,$$self{NumCAFPoints},2,0x02)',
+    },
+    2.1 => {
+        Name => 'CAFPointsSelected',
+        Format => 'int8u[int(($val{1}+3)/4)]',
+        Writable => 0,
+        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,$$self{NumCAFPoints},2,0x03)',
     },
 );
 
@@ -5696,29 +5782,34 @@ my %binaryDataAttrs = (
 %Image::ExifTool::Pentax::AFPointInfo = (
     %binaryDataAttrs,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    DATAMEMBER => [ 2 ],
     NOTES => 'AF point information written by the K-1.',
     # 0 - int16u: 1 (version?)
     2 => {
         Name => 'NumAFPoints',
         Format => 'int16u',
+        RawConv => '$$self{NumAFPoints} = $val',
     },
     4 => {
         Name => 'AFPointsInFocus',
         Condition => '$$self{Model} =~ /K-1\b/',
-        Format => 'int8u[9]',
-        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,33,2,0x02)',
+        Format => 'int8u[int(($val{2}+3)/4)]',
+        Writable => 0,
+        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,$$self{NumAFPoints},2,0x02)',
     },
     4.1 => {
         Name => 'AFPointsSelected',
         Condition => '$$self{Model} =~ /K-1\b/',
-        Format => 'int8u[9]',
-        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,33,2,0x03)',
+        Format => 'int8u[int(($val{2}+3)/4)]',
+        Writable => 0,
+        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,$$self{NumAFPoints},2,0x03)',
     },
     4.2 => {
         Name => 'AFPointsSpecial',
         Condition => '$$self{Model} =~ /K-1\b/',
-        Format => 'int8u[9]',
-        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,33,2,0x03,0x03)',
+        Format => 'int8u[int(($val{2}+3)/4)]',
+        Writable => 0,
+        PrintConv => 'Image::ExifTool::Pentax::DecodeAFPoints($val,$$self{NumAFPoints},2,0x03,0x03)',
     },
 );
 
@@ -5739,6 +5830,7 @@ my %binaryDataAttrs = (
     #  more quickly than CameraTemperature when shooting video.)
     0x0c => {
         Name => 'SensorTemperature', #forum6677 (was CameraTemperature2)
+        Condition => '$$self{Model} !~ /K-3 Mark III/', # (and maybe others?)
         Format => 'int16s',
         ValueConv => '$val / 10',
         ValueConvInv => '$val * 10',
@@ -5747,6 +5839,7 @@ my %binaryDataAttrs = (
     },
     0x0e => {
         Name => 'SensorTemperature2', #forum6677 (was CameraTemperature3)
+        Condition => '$$self{Model} !~ /K-3 Mark III/', # (and maybe others?)
         Format => 'int16s',
         ValueConv => '$val / 10',
         ValueConvInv => '$val * 10',
@@ -5768,6 +5861,15 @@ my %binaryDataAttrs = (
         PrintConvInv => '$val=~s/ ?c$//i; $val',
     },
     # 0x18,0x1a,0x1c,0x1e = int16u[4] BlackPoint - PH
+    0x2a => {
+        Name => 'SensorTemperature',
+        Condition => '$$self{Model} =~ /K-3 Mark III/',
+        Format => 'int16s',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+        PrintConv => 'sprintf("%.1f C", $val)',
+        PrintConvInv => '$val=~s/ ?c$//i; $val',
+    },
 );
 
 # currently unknown info
@@ -6357,6 +6459,45 @@ sub DecodeAFPoints($$$$;$)
 }
 
 #------------------------------------------------------------------------------
+# Print AF Point names for K-3III (ref PH)
+# Inputs: 0) value, 1) ExifTool ref, 2) optional value to match
+sub AFPointsK3iii($$;$)
+{
+    my @a = split ' ', $_[0];
+    my $match = $_[2];
+    my @pts;
+    if ($match) {
+        $a[$_] == $match and push @pts, $k3iiiAF[$_] || "Unknown($_)" foreach 0..$#a;
+    } else {
+        $a[$_] and push @pts, $k3iiiAF[$_] || "Unknown($_)" foreach 0..$#a;
+    }
+    return @pts ? join ',', sort @pts : '(none)';
+}
+
+#------------------------------------------------------------------------------
+# Print AF point values for K-3III (ref PH)
+# Inputs: 0) value, 1) ExifTool ref
+# Notes: this is experimental and not well understood
+sub AFPointValues($$)
+{
+    my @a = split ' ', shift;
+    my @vals;
+    # (I really don't understand why Pentax seemed to use 28 instead of 41 for
+    # the first index of the 2nd value, because as it stands there is
+    # overlap between the ranges of the 1st and 2nd values, and there is
+    # no way to tell which is which for cases were multiple points have values)
+    foreach (0 .. $#a) {
+        next unless $a[$_];
+        my $pt = $k3iiiAF[$_] ? $k3iiiAF[$_] . '=' : $k3iiiAF[$_-28] . '=/';
+        push @vals, "$pt$a[$_]";
+        next unless $a[$_ + 28];
+        $vals[-1] .= '/' . $a[$_ + 28];
+        $a[$_ + 28] = undef;
+    }
+    return @vals ? join ',', sort @vals : '(none)';
+}
+
+#------------------------------------------------------------------------------
 # Convert Pentax hex-based EV (modulo 8) to real number
 # Inputs: 0) value to convert
 # eg) 0x00 -> 0
@@ -6477,7 +6618,7 @@ tags, and everyone who helped contribute to the LensType values.
 
 =head1 AUTHOR
 
-Copyright 2003-2024, Phil Harvey (philharvey66 at gmail.com)
+Copyright 2003-2025, Phil Harvey (philharvey66 at gmail.com)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

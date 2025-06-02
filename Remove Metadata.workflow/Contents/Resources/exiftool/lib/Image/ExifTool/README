@@ -209,7 +209,7 @@ key:
                   name documentation.  When this is set, numerical TagID's are
                   not converted to hexadecimal notation.  Unless otherwise set,
                   an ID_LABEL of "Index" is assumed for tables which use
-                  ProcessBinaryData.
+                  ProcessBinaryData or set the IS_BINARY flag.
 
     NO_ID         Avoid printing "Tag ID" column in tag name documentation.
 
@@ -256,6 +256,9 @@ key:
 
     ALLOW_REPROCESS Flag to allow reprocessing of another directory at this
                   same location in the file, bypassing recursion avoidance test.
+
+    IS_BINARY     Set if this is a binary table and should show an Index in the
+                  first column instead of a Tag ID.
 
   DATAMEMBER : BinaryData tables only.  A reference to a list of sorted tag ID's
   which must be extracted as data members when writing.  Must also list "var_"
@@ -439,6 +442,10 @@ numerical, and generated automatically otherwise.
                   ExifTool an XMP lang-alt tag (Writable="lang-alt") is NOT a
                   list-type tag (unless it is a list of lang-alt lists, which is
                   uncommon).
+
+                  'IsList' - Flag to mark tag as List-type in the documentation
+                  without accumulating entries from subsequent tags.  Used when
+                  the value for a single tag is a complete list.
 
                   'MakerNotes' - set if this tag is maker note data.
 
@@ -898,7 +905,10 @@ numerical, and generated automatically otherwise.
   Deletable     : [Writable SubDirectory's only] Overrides internal test for
                   metadata types with permanent directories (currently QuickTime
                   and Jpeg2000), allowing the tag containing these directories
-                  to be deleted
+                  to be deleted.  Note that either the tag's SubDirectory
+                  DirName (which defaults to the TagName if not specified) or
+                  the family 0 group name of the SubDirectory TagTable must
+                  match a deletable group name.
 
   OffsetPair    : Used in EXIF table to specify the tagID for the corresponding
                   offset or length tag.
@@ -971,6 +981,16 @@ numerical, and generated automatically otherwise.
   SetBase       : [QuickTime and BinaryData tags only] Sets ExifTool BASE offset
                   for use when ExtractInfo is called with the ReEntry flag from
                   inside the RawConv of a tag.
+
+  ByteOrder     : [Non-writable tags extracted with HandleTag and writable EXIF
+                  offset-pair tags only] Specifies byte order if tag value is
+                  stored with a constant byte order that is different from that
+                  of the parent directory.
+
+  DontRead      : [QuickTime tags with compatible SubDirectory entries only]
+                  Avoid reading subdirectory data from file.  Instead, pass RAF
+                  reference (with current position at start of directory) and
+                  DirEnd.
 
   TagID         : [reserved] Used internally to save the table key for this tag.
                   Note: For XMP tables this corresponds to the XMP property
@@ -1061,8 +1081,8 @@ numerical, and generated automatically otherwise.
      ByteOrder  : Specifies byte ordering if different than than the rest of the
                   file.  Must be either BigEndian, LittleEndian or Unknown.  If
                   Unknown is specified, the byte order will be determined from
-                  the directory count (however, this can not be done if OffsetPt
-                  is specified).
+                  the directory count for EXIF (however, this can not be done if
+                  OffsetPt is specified).
 
      Validate   : If given, specifies Perl expression which is used to validate
                   the subdirectory data (regardless of Validate option setting).
